@@ -185,6 +185,9 @@ export function NasdaqDashboard() {
           <div>
             <p><strong>计算口径</strong> {data.methodology}</p>
             <p>数据截至 {formatDate(data.asOf)}。本图使用日收盘数据，不代表盘中实时行情，也不构成投资建议。</p>
+            {data.deliveryMode === "snapshot" ? (
+              <p className="snapshot-notice">上游数据暂时不可达，当前使用最近同步的 FRED 数据快照。</p>
+            ) : null}
           </div>
           <a href={data.source.url} target="_blank" rel="noreferrer">
             数据来源：{data.source.name}

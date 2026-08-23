@@ -3,11 +3,13 @@ import type {
   NasdaqYoYPoint,
   NasdaqYoYResponse,
 } from "@/lib/types";
+import { NASDAQ_SNAPSHOT_CSV } from "@/lib/nasdaq-snapshot";
 
 const FRED_SERIES_ID = "NASDAQCOM";
 const FRED_SERIES_URL = `https://fred.stlouisfed.org/series/${FRED_SERIES_ID}`;
 const DAY_MS = 86_400_000;
 const MAX_COMPARISON_GAP_DAYS = 10;
+const UPSTREAM_TIMEOUT_MS = 2_500;
 
 function parseUtcDate(date: string): Date {
   return new Date(`${date}T00:00:00.000Z`);
@@ -110,19 +112,34 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
   csvUrl.searchParams.set("id", FRED_SERIES_ID);
   csvUrl.searchParams.set("cosd", startDateForFredRequest());
 
-  const response = await fetch(csvUrl, {
-    headers: {
-      Accept: "text/csv",
-      "User-Agent": "nasdaq-yoy-dashboard/1.0",
-    },
-    next: { revalidate: 3600 },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  let csv = NASDAQ_SNAPSHOT_CSV;
+  let deliveryMode: NasdaqYoYResponse["deliveryMode"] = "snapshot";
 
-  if (!response.ok) {
-    throw new Error(`FRED returned HTTP ${response.status}`);
+  try {
+    const response = await fetch(csvUrl, {
+      headers: {
+        Accept: "text/csv",
+        "User-Agent": "nasdaq-yoy-dashboard/1.0",
+      },
+      next: { revalidate: 3600 },
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`FRED returned HTTP ${response.status}`);
+    }
+
+    csv = await response.text();
+    deliveryMode = "fresh";
+  } catch (error) {
+    console.warn("FRED fetch unavailable; serving bundled NASDAQCOM snapshot", error);
+  } finally {
+    clearTimeout(timeout);
   }
 
-  const observations = parseFredCsv(await response.text());
+  const observations = parseFredCsv(csv);
   const points = computeRollingYoY(observations);
 
   if (points.length < 200) {
@@ -148,6 +165,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
     periodStart: points[0].date,
     frequency: "日收盘",
     unit: "%",
+    deliveryMode,
     source: {
       name: "FRED · Federal Reserve Bank of St. Louis",
       url: FRED_SERIES_URL,

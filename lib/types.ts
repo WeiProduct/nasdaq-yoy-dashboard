@@ -20,6 +20,7 @@ export type NasdaqYoYResponse = {
   periodStart: string;
   frequency: string;
   unit: string;
+  deliveryMode: "fresh" | "snapshot";
   source: {
     name: string;
     url: string;

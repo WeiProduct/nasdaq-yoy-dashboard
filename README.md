@@ -2,9 +2,14 @@
 
 一个以方案 B 实现的纳斯达克综合指数滚动一年同比趋势网页。图中每个交易日都与一年前同日（若休市，则使用此前最近交易日）的收盘点位比较。
 
+## 在线访问
+
+[https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app](https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app)
+
 ## 功能
 
 - FRED `NASDAQCOM` 日收盘数据，由 Next.js 服务端代理并缓存。
+- 上游超时保护与内置数据快照容灾，避免云端数据源故障导致空白页。
 - 最近 12 个月逐日滚动同比百分比趋势。
 - 正负区间双色折线与面积填充、0% 基准线。
 - 鼠标、触摸和键盘方向键均可查看最近交易日。
