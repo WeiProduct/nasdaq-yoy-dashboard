@@ -49,6 +49,10 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 2,
 });
 
+const axisNumberFormatter = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 0,
+});
+
 function percent(value: number, digits = 2) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(digits)}%`;
@@ -77,12 +81,14 @@ type RollingYoYChartProps = {
   points: NasdaqYoYPoint[];
   ytdPoints: YtdPoint[];
   showYtd: boolean;
+  showIndex: boolean;
 };
 
 export function RollingYoYChart({
   points: rawPoints,
   ytdPoints: rawYtdPoints,
   showYtd,
+  showIndex,
 }: RollingYoYChartProps) {
   const { ref: containerRef, width } = useContainerWidth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -111,13 +117,14 @@ export function RollingYoYChart({
 
   const height = width > 0 && width < 620 ? 350 : 430;
   const margin = width < 620
-    ? { top: 18, right: 48, bottom: 42, left: 10 }
-    : { top: 24, right: 64, bottom: 46, left: 16 };
+    ? { top: 18, right: 48, bottom: 42, left: showIndex ? 48 : 10 }
+    : { top: 24, right: 64, bottom: 46, left: showIndex ? 64 : 16 };
 
   const chart = useMemo(() => {
     if (width <= 0 || points.length === 0) return null;
 
     const [dateMin, dateMax] = extent(points, (point) => point.dateValue);
+    const [closeMin = 0, closeMax = 0] = extent(points, (point) => point.close);
     const visibleValues = points.map((point) => point.yoyPct);
     if (showYtd) visibleValues.push(...ytdPoints.map((point) => point.ytdPct));
     const [valueMin = 0, valueMax = 0] = extent(visibleValues);
@@ -133,6 +140,15 @@ export function RollingYoYChart({
       .range([margin.left, width - margin.right]);
     const yScale = scaleLinear()
       .domain([domainMin, domainMax])
+      .nice(5)
+      .range([height - margin.bottom, margin.top]);
+    const closeSpan = Math.max(closeMax - closeMin, 1);
+    const closePadding = Math.max(closeSpan * 0.08, 100);
+    const indexYScale = scaleLinear()
+      .domain([
+        Math.max(0, closeMin - closePadding),
+        closeMax + closePadding,
+      ])
       .nice(5)
       .range([height - margin.bottom, margin.top]);
 
@@ -151,6 +167,12 @@ export function RollingYoYChart({
           .y((point) => yScale(point.ytdPct))
           .curve(curveLinear)(ytdPoints)
       : null;
+    const indexLinePath = showIndex
+      ? line<ChartPoint>()
+          .x((point) => xScale(point.dateValue))
+          .y((point) => indexYScale(point.close))
+          .curve(curveLinear)(points)
+      : null;
 
     const innerHeight = height - margin.top - margin.bottom;
     const zeroOffset = Math.max(
@@ -164,11 +186,14 @@ export function RollingYoYChart({
       linePath,
       areaPath,
       ytdLinePath,
+      indexLinePath,
+      indexYScale,
       zeroOffset,
       xTicks: xScale.ticks(width < 620 ? 4 : 7),
       yTicks: yScale.ticks(width < 620 ? 4 : 5),
+      indexTicks: indexYScale.ticks(width < 620 ? 4 : 5),
     };
-  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showYtd, width, ytdPoints]);
+  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showIndex, showYtd, width, ytdPoints]);
 
   const nearestIndex = useMemo(
     () => bisector<ChartPoint, number>((point) => point.timestamp).center,
@@ -218,6 +243,7 @@ export function RollingYoYChart({
   const hoveredX = hovered && chart ? chart.xScale(hovered.dateValue) : 0;
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
   const hoveredYtdY = hoveredYtd && chart ? chart.yScale(hoveredYtd.ytdPct) : 0;
+  const hoveredIndexY = hovered && chart ? chart.indexYScale(hovered.close) : 0;
   const tooltipWidth = width < 620 ? 202 : 220;
   const tooltipHeight = hoveredYtd ? 134 : 112;
   const tooltipX = hoveredX > width / 2
@@ -236,7 +262,7 @@ export function RollingYoYChart({
       ref={containerRef}
       tabIndex={0}
       role="slider"
-      aria-label="逐日查看纳斯达克综合指数滚动一年同比"
+      aria-label={`逐日查看纳斯达克综合指数滚动一年同比${showIndex ? "和指数点位" : ""}`}
       aria-valuemin={0}
       aria-valuemax={points.length - 1}
       aria-valuenow={hoveredIndex ?? points.length - 1}
@@ -306,6 +332,38 @@ export function RollingYoYChart({
                 </text>
               </g>
             ))}
+            {showIndex ? (
+              <>
+                <text
+                  className="axis-unit index-axis-unit"
+                  x={margin.left - 8}
+                  y={margin.top - 7}
+                  textAnchor="end"
+                >
+                  点位
+                </text>
+                {chart.indexTicks.map((tick) => (
+                  <g key={`index-${tick}`}>
+                    <line
+                      className="index-axis-tick"
+                      x1={margin.left - 5}
+                      x2={margin.left}
+                      y1={chart.indexYScale(tick)}
+                      y2={chart.indexYScale(tick)}
+                    />
+                    <text
+                      className="axis-label index-axis-label"
+                      x={margin.left - 8}
+                      y={chart.indexYScale(tick)}
+                      dominantBaseline="middle"
+                      textAnchor="end"
+                    >
+                      {axisNumberFormatter.format(tick)}
+                    </text>
+                  </g>
+                ))}
+              </>
+            ) : null}
             {chart.xTicks.map((tick, index) => (
               <g key={tick.getTime()}>
                 <line
@@ -340,6 +398,9 @@ export function RollingYoYChart({
             ) : null}
             {chart.ytdLinePath ? (
               <path className="ytd-line-path" d={chart.ytdLinePath} />
+            ) : null}
+            {chart.indexLinePath ? (
+              <path className="index-line-path" d={chart.indexLinePath} />
             ) : null}
           </g>
 
@@ -385,6 +446,17 @@ export function RollingYoYChart({
                   <circle cx={hoveredX} cy={hoveredYtdY} r="3" fill="white" />
                 </>
               ) : null}
+              {showIndex ? (
+                <>
+                  <circle
+                    className="hover-dot-ring index-hover-dot"
+                    cx={hoveredX}
+                    cy={hoveredIndexY}
+                    r="7"
+                  />
+                  <circle cx={hoveredX} cy={hoveredIndexY} r="3" fill="white" />
+                </>
+              ) : null}
               <g transform={`translate(${tooltipX}, ${tooltipY})`} filter={`url(#${gradientId}-shadow)`}>
                 <rect className="tooltip-box" width={tooltipWidth} height={tooltipHeight} rx="12" />
                 <text className="tooltip-date" x="14" y="23">
@@ -402,8 +474,12 @@ export function RollingYoYChart({
                     年初至今 {percent(hoveredYtd.ytdPct)}
                   </text>
                 ) : null}
-                <text className="tooltip-detail" x="14" y={hoveredYtd ? 98 : 75}>
-                  当前收盘 {numberFormatter.format(hovered.close)}
+                <text
+                  className={showIndex ? "tooltip-index-value" : "tooltip-detail"}
+                  x="14"
+                  y={hoveredYtd ? 98 : 75}
+                >
+                  {showIndex ? "指数点位" : "当前收盘"} {numberFormatter.format(hovered.close)}
                 </text>
                 <text className="tooltip-detail" x="14" y={hoveredYtd ? 119 : 96}>
                   去年对比价 {numberFormatter.format(hovered.comparisonClose)}

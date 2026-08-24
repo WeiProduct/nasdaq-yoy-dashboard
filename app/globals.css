@@ -12,6 +12,8 @@
   --negative-soft: #fae9e8;
   --ytd: #315bc7;
   --ytd-soft: #e9eefc;
+  --index: #984f12;
+  --index-soft: #f8eee4;
   --focus: #1967d2;
   --shadow: 0 26px 80px rgba(30, 43, 33, 0.1), 0 2px 10px rgba(30, 43, 33, 0.05);
   color-scheme: light;
@@ -269,6 +271,13 @@ h1 {
   gap: 12px;
 }
 
+.chart-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .legend > span {
   display: inline-flex;
   align-items: center;
@@ -291,6 +300,10 @@ h1 {
 
 .ytd-bg {
   background: var(--ytd);
+}
+
+.index-bg {
+  background: var(--index);
 }
 
 .compare-toggle {
@@ -359,6 +372,20 @@ h1 {
   transform: translateX(11px);
 }
 
+.index-toggle.is-active {
+  border-color: color-mix(in srgb, var(--index) 46%, white);
+  color: #773d0e;
+  background: var(--index-soft);
+}
+
+.index-toggle strong {
+  color: var(--index);
+}
+
+.index-toggle.is-active .toggle-indicator {
+  background: var(--index);
+}
+
 .chart-wrap {
   width: 100%;
   min-height: 390px;
@@ -413,6 +440,30 @@ h1 {
   animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
+.index-line-path {
+  fill: none;
+  stroke: var(--index);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.index-axis-tick {
+  stroke: color-mix(in srgb, var(--index) 48%, white);
+}
+
+.index-axis-label,
+.index-axis-unit {
+  fill: var(--index);
+}
+
+.axis-unit {
+  font-size: 9px;
+  font-weight: 720;
+}
+
 .area-path {
   animation: chart-appear 800ms 80ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
@@ -448,6 +499,10 @@ h1 {
   fill: var(--ytd);
 }
 
+.index-hover-dot {
+  fill: var(--index);
+}
+
 .tooltip-box {
   fill: rgba(255, 255, 253, 0.98);
   stroke: #d7ddd7;
@@ -470,6 +525,13 @@ h1 {
   fill: var(--ytd);
   font-size: 14px;
   font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-index-value {
+  fill: var(--index);
+  font-size: 9px;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -710,6 +772,10 @@ h1 {
 
   .chart-controls {
     align-items: flex-start;
+  }
+
+  .chart-toggle-row {
+    justify-content: flex-start;
   }
 
   .chart-wrap {

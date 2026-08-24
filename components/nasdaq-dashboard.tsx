@@ -10,6 +10,10 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 2,
 });
 
+const compactPointFormatter = new Intl.NumberFormat("zh-CN", {
+  maximumFractionDigits: 0,
+});
+
 const intradayTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "America/New_York",
   month: "numeric",
@@ -82,6 +86,7 @@ export function NasdaqDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
   const [showYtd, setShowYtd] = useState(false);
+  const [showIndex, setShowIndex] = useState(false);
 
   const ytd = useMemo(() => computeCurrentYearYtd(data?.points ?? []), [data]);
 
@@ -183,23 +188,43 @@ export function NasdaqDashboard() {
                 {showYtd ? (
                   <span role="listitem"><i className="legend-swatch ytd-bg" />年初至今</span>
                 ) : null}
+                {showIndex ? (
+                  <span role="listitem"><i className="legend-swatch index-bg" />指数点位</span>
+                ) : null}
               </div>
-              <button
-                type="button"
-                className={`compare-toggle${showYtd ? " is-active" : ""}`}
-                aria-pressed={showYtd}
-                onClick={() => setShowYtd((current) => !current)}
-                disabled={ytd.latestYtdPct === null}
-              >
-                <span className="toggle-indicator" aria-hidden="true"><i /></span>
-                <span>对比年初至今</span>
-                {ytd.latestYtdPct === null ? null : (
-                  <strong>{formatPercent(ytd.latestYtdPct)}</strong>
-                )}
-              </button>
+              <div className="chart-toggle-row">
+                <button
+                  type="button"
+                  className={`compare-toggle ytd-toggle${showYtd ? " is-active" : ""}`}
+                  aria-pressed={showYtd}
+                  onClick={() => setShowYtd((current) => !current)}
+                  disabled={ytd.latestYtdPct === null}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>对比年初至今</span>
+                  {ytd.latestYtdPct === null ? null : (
+                    <strong>{formatPercent(ytd.latestYtdPct)}</strong>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className={`compare-toggle index-toggle${showIndex ? " is-active" : ""}`}
+                  aria-pressed={showIndex}
+                  onClick={() => setShowIndex((current) => !current)}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>显示指数点数</span>
+                  <strong>{compactPointFormatter.format(data.stats.latestClose)}</strong>
+                </button>
+              </div>
             </div>
           </div>
-          <RollingYoYChart points={data.points} ytdPoints={ytd.points} showYtd={showYtd} />
+          <RollingYoYChart
+            points={data.points}
+            ytdPoints={ytd.points}
+            showYtd={showYtd}
+            showIndex={showIndex}
+          />
         </section>
 
         <section className="stats-grid" aria-label="趋势摘要">
