@@ -5,7 +5,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: "17 23 * * 1-5"
+    # 02:17 UTC daily: after the U.S. market close and FRED's usual publication window.
+    - cron: "17 2 * * *"
 
 permissions:
   contents: read
