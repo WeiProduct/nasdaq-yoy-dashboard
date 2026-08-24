@@ -442,7 +442,7 @@ export function RollingYoYChart({
           />
 
           {hovered ? (
-            <g className="hover-layer" aria-hidden="true">
+            <g className="hover-layer" aria-hidden="true" pointerEvents="none">
               <line
                 className="crosshair-line"
                 x1={hoveredX}

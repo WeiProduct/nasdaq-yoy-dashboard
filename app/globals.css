@@ -528,6 +528,10 @@ h1 {
   stroke-dasharray: 2 3;
 }
 
+.hover-layer {
+  pointer-events: none;
+}
+
 .hover-dot-ring {
   stroke: white;
   stroke-width: 2;
