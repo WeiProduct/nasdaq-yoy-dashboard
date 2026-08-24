@@ -9,6 +9,17 @@ const numberFormatter = new Intl.NumberFormat("zh-CN", {
   maximumFractionDigits: 2,
 });
 
+const intradayTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "America/New_York",
+  month: "numeric",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+const AUTO_REFRESH_MS = 10 * 60 * 1_000;
+
 const dateFormatter = new Intl.DateTimeFormat("zh-CN", {
   year: "numeric",
   month: "long",
@@ -97,6 +108,14 @@ export function NasdaqDashboard() {
     void loadData();
     return () => controller.abort();
   }, [requestVersion]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setRequestVersion((version) => version + 1);
+    }, AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   const retry = useCallback(() => {
     setData(null);
@@ -188,14 +207,25 @@ export function NasdaqDashboard() {
           <div>
             <p><strong>计算口径</strong> {data.methodology}</p>
             <p>数据截至 {formatDate(data.asOf)}。本图使用日收盘数据，不代表盘中实时行情，也不构成投资建议。</p>
+            {data.intraday.active && data.intraday.updatedAt ? (
+              <p className="intraday-notice">
+                当日点位每 10 分钟刷新；最近行情时间（美东）{intradayTimeFormatter.format(new Date(data.intraday.updatedAt))}。Nasdaq 公开展示数据至少延迟 1 分钟。
+              </p>
+            ) : (
+              <p className="snapshot-notice">当日行情暂不可用，当前仅显示 FRED 最近数据。</p>
+            )}
             {data.deliveryMode === "snapshot" ? (
               <p className="snapshot-notice">上游数据暂时不可达，当前使用最近同步的 FRED 数据快照。</p>
             ) : null}
           </div>
-          <a href={data.source.url} target="_blank" rel="noreferrer">
-            数据来源：{data.source.name}
-            <span aria-hidden="true">↗</span>
-          </a>
+          <div className="source-links">
+            <a href={data.source.url} target="_blank" rel="noreferrer">
+              历史：{data.source.name}<span aria-hidden="true">↗</span>
+            </a>
+            <a href={data.intraday.source.url} target="_blank" rel="noreferrer">
+              当日：{data.intraday.source.name}<span aria-hidden="true">↗</span>
+            </a>
+          </div>
         </footer>
       </article>
     </main>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeRollingYoY, parseFredCsv, shiftOneYearBack } from "@/lib/nasdaq";
+import {
+  computeRollingYoY,
+  mergeLatestObservation,
+  parseFredCsv,
+  shiftOneYearBack,
+} from "@/lib/nasdaq";
 
 describe("parseFredCsv", () => {
   it("filters invalid values, deduplicates dates, and sorts observations", () => {
@@ -15,6 +20,32 @@ describe("parseFredCsv", () => {
       { date: "2025-01-01", close: 99 },
       { date: "2025-01-03", close: 101 },
     ]);
+  });
+});
+
+describe("mergeLatestObservation", () => {
+  it("appends a newer intraday value and replaces the same trading date", () => {
+    const history = [
+      { date: "2026-08-20", close: 100 },
+      { date: "2026-08-21", close: 101 },
+    ];
+
+    expect(
+      mergeLatestObservation(history, { date: "2026-08-24", close: 99 }),
+    ).toEqual([...history, { date: "2026-08-24", close: 99 }]);
+    expect(
+      mergeLatestObservation(history, { date: "2026-08-21", close: 102 }),
+    ).toEqual([
+      { date: "2026-08-20", close: 100 },
+      { date: "2026-08-21", close: 102 },
+    ]);
+  });
+
+  it("ignores an intraday value older than the latest FRED observation", () => {
+    const history = [{ date: "2026-08-21", close: 101 }];
+    expect(
+      mergeLatestObservation(history, { date: "2026-08-20", close: 99 }),
+    ).toBe(history);
   });
 });
 

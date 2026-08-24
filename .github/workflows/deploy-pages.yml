@@ -36,7 +36,7 @@ jobs:
       - name: Build static site
         env:
           GITHUB_PAGES: "true"
-          NEXT_PUBLIC_NASDAQ_DATA_URL: "/nasdaq-yoy-dashboard/data/nasdaq.json"
+          NEXT_PUBLIC_NASDAQ_DATA_URL: "https://nasdaq-yoy-dashboard.vercel.app/api/nasdaq"
         run: npm run build
 
       - name: Configure Pages

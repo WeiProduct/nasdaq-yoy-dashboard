@@ -21,6 +21,16 @@ export type NasdaqYoYResponse = {
   frequency: string;
   unit: string;
   deliveryMode: "fresh" | "snapshot";
+  intraday: {
+    active: boolean;
+    updatedAt: string | null;
+    refreshIntervalSeconds: number;
+    isRealTime: boolean;
+    source: {
+      name: string;
+      url: string;
+    };
+  };
   source: {
     name: string;
     url: string;

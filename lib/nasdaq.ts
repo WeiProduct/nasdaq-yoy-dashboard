@@ -3,6 +3,10 @@ import type {
   NasdaqYoYPoint,
   NasdaqYoYResponse,
 } from "@/lib/types";
+import {
+  getLiveNasdaqObservation,
+  type LiveNasdaqObservation,
+} from "@/lib/nasdaq-live";
 import { NASDAQ_SNAPSHOT_CSV } from "@/lib/nasdaq-snapshot";
 
 const FRED_SERIES_ID = "NASDAQCOM";
@@ -65,6 +69,18 @@ export function parseFredCsv(csv: string): NasdaqObservation[] {
   );
 }
 
+export function mergeLatestObservation(
+  observations: NasdaqObservation[],
+  latest: NasdaqObservation,
+) {
+  const historicalLatest = observations.at(-1);
+  if (historicalLatest && latest.date < historicalLatest.date) return observations;
+
+  return [...observations.filter((observation) => observation.date !== latest.date), latest].sort(
+    (a, b) => a.date.localeCompare(b.date),
+  );
+}
+
 export function computeRollingYoY(observations: NasdaqObservation[]): NasdaqYoYPoint[] {
   if (observations.length < 2) return [];
 
@@ -116,6 +132,10 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   let csv = NASDAQ_SNAPSHOT_CSV;
   let deliveryMode: NasdaqYoYResponse["deliveryMode"] = "snapshot";
+  const liveObservationPromise = getLiveNasdaqObservation().catch((error) => {
+    console.warn("Nasdaq intraday quote unavailable; serving FRED history only", error);
+    return null;
+  });
 
   try {
     const response = await fetch(csvUrl, {
@@ -139,7 +159,19 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
     clearTimeout(timeout);
   }
 
-  const observations = parseFredCsv(csv);
+  const historicalObservations = parseFredCsv(csv);
+  const liveObservation = await liveObservationPromise;
+  const intradayActive = Boolean(
+    liveObservation &&
+      (!historicalObservations.at(-1) ||
+        liveObservation.date >= historicalObservations.at(-1)!.date),
+  );
+  const observations = intradayActive
+    ? mergeLatestObservation(
+        historicalObservations,
+        liveObservation as LiveNasdaqObservation,
+      )
+    : historicalObservations;
   const points = computeRollingYoY(observations);
 
   if (points.length < 200) {
@@ -163,15 +195,25 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
     seriesId: FRED_SERIES_ID,
     asOf: latest.date,
     periodStart: points[0].date,
-    frequency: "日收盘",
+    frequency: intradayActive ? "日收盘 · 当日每10分钟更新" : "日收盘",
     unit: "%",
     deliveryMode,
+    intraday: {
+      active: intradayActive,
+      updatedAt: intradayActive ? liveObservation!.updatedAt : null,
+      refreshIntervalSeconds: 600,
+      isRealTime: intradayActive ? liveObservation!.isRealTime : false,
+      source: {
+        name: "Nasdaq · COMP",
+        url: "https://www.nasdaq.com/market-activity/index/comp",
+      },
+    },
     source: {
       name: "FRED · Federal Reserve Bank of St. Louis",
       url: FRED_SERIES_URL,
     },
     methodology:
-      "每个交易日收盘点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；结果以百分比表示。",
+      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证。每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1。",
     points,
     stats: {
       latestClose: latest.close,

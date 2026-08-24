@@ -463,6 +463,19 @@ h1 {
   font-weight: 650;
 }
 
+.intraday-notice {
+  color: #287147;
+  font-weight: 650;
+}
+
+.source-links {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
 .data-footer a {
   display: inline-flex;
   flex: 0 0 auto;
