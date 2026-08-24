@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getNasdaqYoYData } from "@/lib/nasdaq";
 
 export const runtime = "nodejs";
+export const dynamic = "force-static";
+export const revalidate = 3600;
 
 export async function GET() {
   try {

@@ -19,6 +19,7 @@ import {
   scaleUtc,
 } from "d3";
 import type { NasdaqYoYPoint } from "@/lib/types";
+import { mapClientXToRange } from "@/lib/chart-coordinates";
 
 type ChartPoint = NasdaqYoYPoint & {
   timestamp: number;
@@ -140,9 +141,14 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
   function indexFromClientX(clientX: number, element: SVGRectElement) {
     if (!chart) return 0;
     const bounds = element.getBoundingClientRect();
-    const svgX = ((clientX - bounds.left) / bounds.width) * width;
-    const clampedX = Math.max(margin.left, Math.min(width - margin.right, svgX));
-    const timestamp = chart.xScale.invert(clampedX).getTime();
+    const svgX = mapClientXToRange(
+      clientX,
+      bounds.left,
+      bounds.width,
+      margin.left,
+      width - margin.right,
+    );
+    const timestamp = chart.xScale.invert(svgX).getTime();
     return nearestIndex(points, timestamp);
   }
 
@@ -173,7 +179,7 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
   const hovered = hoveredIndex === null ? null : points[hoveredIndex];
   const hoveredX = hovered && chart ? chart.xScale(hovered.dateValue) : 0;
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
-  const tooltipWidth = width < 620 ? 174 : 196;
+  const tooltipWidth = width < 620 ? 190 : 206;
   const tooltipHeight = 112;
   const tooltipX = hoveredX > width / 2
     ? hoveredX - tooltipWidth - 14
@@ -338,10 +344,10 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
                   {percent(hovered.yoyPct)}
                 </text>
                 <text className="tooltip-detail" x="14" y="75">
-                  收盘 {numberFormatter.format(hovered.close)}
+                  当前收盘 {numberFormatter.format(hovered.close)}
                 </text>
                 <text className="tooltip-detail" x="14" y="96">
-                  对比 {hovered.comparisonDate} · {numberFormatter.format(hovered.comparisonClose)}
+                  去年对比价 {numberFormatter.format(hovered.comparisonClose)}
                 </text>
               </g>
             </g>

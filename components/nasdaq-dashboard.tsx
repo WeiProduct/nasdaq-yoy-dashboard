@@ -77,7 +77,10 @@ export function NasdaqDashboard() {
       setError(null);
 
       try {
-        const response = await fetch("/api/nasdaq", { signal: controller.signal });
+        const response = await fetch(
+          process.env.NEXT_PUBLIC_NASDAQ_DATA_URL ?? "/api/nasdaq",
+          { signal: controller.signal },
+        );
         const payload = (await response.json()) as NasdaqYoYResponse | { error?: string };
 
         if (!response.ok || !("points" in payload)) {

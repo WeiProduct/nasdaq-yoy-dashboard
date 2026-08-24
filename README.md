@@ -4,7 +4,9 @@
 
 ## 在线访问
 
-[https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app](https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app)
+- GitHub Pages（易记）：[https://weiproduct.github.io/nasdaq-yoy-dashboard/](https://weiproduct.github.io/nasdaq-yoy-dashboard/)
+- Vercel：[https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app](https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app)
+- 源代码：[https://github.com/WeiProduct/nasdaq-yoy-dashboard](https://github.com/WeiProduct/nasdaq-yoy-dashboard)
 
 ## 功能
 
@@ -12,7 +14,8 @@
 - 上游超时保护与内置数据快照容灾，避免云端数据源故障导致空白页。
 - 最近 12 个月逐日滚动同比百分比趋势。
 - 正负区间双色折线与面积填充、0% 基准线。
-- 鼠标、触摸和键盘方向键均可查看最近交易日。
+- 鼠标、触摸和键盘方向键均可查看每日同比、当前收盘价和去年对比价。
+- GitHub Pages 工作日定时更新静态数据，Vercel 数据端点每小时重新验证。
 - 加载、错误、响应式和无障碍状态。
 - 单元测试覆盖 CSV 清洗、闰年和非交易日比较规则。
 
