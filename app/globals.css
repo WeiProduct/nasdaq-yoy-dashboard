@@ -10,6 +10,8 @@
   --positive-soft: #e4f4e9;
   --negative: #cf3e42;
   --negative-soft: #fae9e8;
+  --ytd: #315bc7;
+  --ytd-soft: #e9eefc;
   --focus: #1967d2;
   --shadow: 0 26px 80px rgba(30, 43, 33, 0.1), 0 2px 10px rgba(30, 43, 33, 0.05);
   color-scheme: light;
@@ -260,6 +262,13 @@ h1 {
   font-weight: 600;
 }
 
+.chart-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
 .legend > span {
   display: inline-flex;
   align-items: center;
@@ -278,6 +287,76 @@ h1 {
 
 .negative-bg {
   background: var(--negative);
+}
+
+.ytd-bg {
+  background: var(--ytd);
+}
+
+.compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #cfd6cf;
+  border-radius: 999px;
+  color: #4e5c53;
+  background: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 680;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.compare-toggle:hover:not(:disabled) {
+  border-color: #9aa9cd;
+  background: #f8faff;
+}
+
+.compare-toggle.is-active {
+  border-color: color-mix(in srgb, var(--ytd) 46%, white);
+  color: #24499e;
+  background: var(--ytd-soft);
+}
+
+.compare-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.compare-toggle strong {
+  color: var(--ytd);
+  font-variant-numeric: tabular-nums;
+}
+
+.toggle-indicator {
+  position: relative;
+  width: 27px;
+  height: 16px;
+  border-radius: 999px;
+  background: #c8cec9;
+  transition: background 160ms ease;
+}
+
+.toggle-indicator i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(20, 33, 22, 0.24);
+  transition: transform 160ms ease;
+}
+
+.compare-toggle.is-active .toggle-indicator {
+  background: var(--ytd);
+}
+
+.compare-toggle.is-active .toggle-indicator i {
+  transform: translateX(11px);
 }
 
 .chart-wrap {
@@ -323,6 +402,17 @@ h1 {
   animation: chart-appear 650ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
+.ytd-line-path {
+  fill: none;
+  stroke: var(--ytd);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 7 4;
+  vector-effect: non-scaling-stroke;
+  animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
 .area-path {
   animation: chart-appear 800ms 80ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
@@ -354,6 +444,10 @@ h1 {
   stroke-width: 2;
 }
 
+.ytd-hover-dot {
+  fill: var(--ytd);
+}
+
 .tooltip-box {
   fill: rgba(255, 255, 253, 0.98);
   stroke: #d7ddd7;
@@ -366,10 +460,17 @@ h1 {
 }
 
 .tooltip-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 760;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
+}
+
+.tooltip-ytd-value {
+  fill: var(--ytd);
+  font-size: 14px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
 }
 
 .positive-fill {
@@ -605,6 +706,10 @@ h1 {
 
   .legend {
     justify-content: flex-start;
+  }
+
+  .chart-controls {
+    align-items: flex-start;
   }
 
   .chart-wrap {

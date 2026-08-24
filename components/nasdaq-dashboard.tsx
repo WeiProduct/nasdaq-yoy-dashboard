@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RollingYoYChart } from "@/components/rolling-yoy-chart";
 import type { NasdaqYoYResponse } from "@/lib/types";
+import { computeCurrentYearYtd } from "@/lib/ytd";
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
@@ -80,6 +81,9 @@ export function NasdaqDashboard() {
   const [data, setData] = useState<NasdaqYoYResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
+  const [showYtd, setShowYtd] = useState(false);
+
+  const ytd = useMemo(() => computeCurrentYearYtd(data?.points ?? []), [data]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -172,12 +176,30 @@ export function NasdaqDashboard() {
               <p className="eyebrow">过去 12 个月的每日同比变化</p>
               <h2 id="chart-title">滚动一年涨跌幅趋势</h2>
             </div>
-            <div className="legend" role="list">
-              <span role="listitem"><i className="legend-swatch positive-bg" />同比为正</span>
-              <span role="listitem"><i className="legend-swatch negative-bg" />同比为负</span>
+            <div className="chart-controls">
+              <div className="legend" role="list" aria-label="图表图例">
+                <span role="listitem"><i className="legend-swatch positive-bg" />同比为正</span>
+                <span role="listitem"><i className="legend-swatch negative-bg" />同比为负</span>
+                {showYtd ? (
+                  <span role="listitem"><i className="legend-swatch ytd-bg" />年初至今</span>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className={`compare-toggle${showYtd ? " is-active" : ""}`}
+                aria-pressed={showYtd}
+                onClick={() => setShowYtd((current) => !current)}
+                disabled={ytd.latestYtdPct === null}
+              >
+                <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                <span>对比年初至今</span>
+                {ytd.latestYtdPct === null ? null : (
+                  <strong>{formatPercent(ytd.latestYtdPct)}</strong>
+                )}
+              </button>
             </div>
           </div>
-          <RollingYoYChart points={data.points} />
+          <RollingYoYChart points={data.points} ytdPoints={ytd.points} showYtd={showYtd} />
         </section>
 
         <section className="stats-grid" aria-label="趋势摘要">

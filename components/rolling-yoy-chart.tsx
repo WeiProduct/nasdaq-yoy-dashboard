@@ -20,8 +20,14 @@ import {
 } from "d3";
 import type { NasdaqYoYPoint } from "@/lib/types";
 import { mapClientXToRange } from "@/lib/chart-coordinates";
+import type { YtdPoint } from "@/lib/ytd";
 
 type ChartPoint = NasdaqYoYPoint & {
+  timestamp: number;
+  dateValue: Date;
+};
+
+type YtdChartPoint = YtdPoint & {
   timestamp: number;
   dateValue: Date;
 };
@@ -67,7 +73,17 @@ function useContainerWidth() {
   return { ref, width };
 }
 
-export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[] }) {
+type RollingYoYChartProps = {
+  points: NasdaqYoYPoint[];
+  ytdPoints: YtdPoint[];
+  showYtd: boolean;
+};
+
+export function RollingYoYChart({
+  points: rawPoints,
+  ytdPoints: rawYtdPoints,
+  showYtd,
+}: RollingYoYChartProps) {
   const { ref: containerRef, width } = useContainerWidth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const gradientId = useId().replaceAll(":", "");
@@ -80,6 +96,18 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
       }),
     [rawPoints],
   );
+  const ytdPoints = useMemo<YtdChartPoint[]>(
+    () =>
+      rawYtdPoints.map((point) => {
+        const dateValue = new Date(`${point.date}T00:00:00.000Z`);
+        return { ...point, dateValue, timestamp: dateValue.getTime() };
+      }),
+    [rawYtdPoints],
+  );
+  const ytdByDate = useMemo(
+    () => new Map(ytdPoints.map((point) => [point.date, point])),
+    [ytdPoints],
+  );
 
   const height = width > 0 && width < 620 ? 350 : 430;
   const margin = width < 620
@@ -90,7 +118,9 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
     if (width <= 0 || points.length === 0) return null;
 
     const [dateMin, dateMax] = extent(points, (point) => point.dateValue);
-    const [valueMin = 0, valueMax = 0] = extent(points, (point) => point.yoyPct);
+    const visibleValues = points.map((point) => point.yoyPct);
+    if (showYtd) visibleValues.push(...ytdPoints.map((point) => point.ytdPct));
+    const [valueMin = 0, valueMax = 0] = extent(visibleValues);
     if (!dateMin || !dateMax) return null;
 
     const rawSpan = Math.max(valueMax - valueMin, 1);
@@ -115,6 +145,12 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
       .y0(yScale(0))
       .y1((point) => yScale(point.yoyPct))
       .curve(curveLinear)(points);
+    const ytdLinePath = showYtd
+      ? line<YtdChartPoint>()
+          .x((point) => xScale(point.dateValue))
+          .y((point) => yScale(point.ytdPct))
+          .curve(curveLinear)(ytdPoints)
+      : null;
 
     const innerHeight = height - margin.top - margin.bottom;
     const zeroOffset = Math.max(
@@ -127,11 +163,12 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
       yScale,
       linePath,
       areaPath,
+      ytdLinePath,
       zeroOffset,
       xTicks: xScale.ticks(width < 620 ? 4 : 7),
       yTicks: yScale.ticks(width < 620 ? 4 : 5),
     };
-  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, width]);
+  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showYtd, width, ytdPoints]);
 
   const nearestIndex = useMemo(
     () => bisector<ChartPoint, number>((point) => point.timestamp).center,
@@ -177,10 +214,12 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
   }
 
   const hovered = hoveredIndex === null ? null : points[hoveredIndex];
+  const hoveredYtd = hovered && showYtd ? ytdByDate.get(hovered.date) : undefined;
   const hoveredX = hovered && chart ? chart.xScale(hovered.dateValue) : 0;
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
-  const tooltipWidth = width < 620 ? 190 : 206;
-  const tooltipHeight = 112;
+  const hoveredYtdY = hoveredYtd && chart ? chart.yScale(hoveredYtd.ytdPct) : 0;
+  const tooltipWidth = width < 620 ? 202 : 220;
+  const tooltipHeight = hoveredYtd ? 134 : 112;
   const tooltipX = hoveredX > width / 2
     ? hoveredX - tooltipWidth - 14
     : hoveredX + 14;
@@ -189,6 +228,7 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
     Math.min(height - margin.bottom - tooltipHeight, hoveredY - tooltipHeight / 2),
   );
   const activePoint = hovered ?? points.at(-1)!;
+  const activeYtd = showYtd ? ytdByDate.get(activePoint.date) : undefined;
 
   return (
     <div
@@ -200,7 +240,7 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
       aria-valuemin={0}
       aria-valuemax={points.length - 1}
       aria-valuenow={hoveredIndex ?? points.length - 1}
-      aria-valuetext={`${fullDateFormatter.format(activePoint.dateValue)}，同比 ${percent(activePoint.yoyPct)}，指数收盘 ${numberFormatter.format(activePoint.close)}`}
+      aria-valuetext={`${fullDateFormatter.format(activePoint.dateValue)}，同比 ${percent(activePoint.yoyPct)}${activeYtd ? `，年初至今 ${percent(activeYtd.ytdPct)}` : ""}，指数收盘 ${numberFormatter.format(activePoint.close)}`}
       onFocus={() => setHoveredIndex((current) => current ?? points.length - 1)}
       onBlur={() => setHoveredIndex(null)}
       onKeyDown={handleKeyboard}
@@ -298,6 +338,9 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
                 stroke={`url(#${gradientId}-line)`}
               />
             ) : null}
+            {chart.ytdLinePath ? (
+              <path className="ytd-line-path" d={chart.ytdLinePath} />
+            ) : null}
           </g>
 
           <rect
@@ -331,6 +374,17 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
                 fill={hovered.yoyPct >= 0 ? "var(--positive)" : "var(--negative)"}
               />
               <circle cx={hoveredX} cy={hoveredY} r="3" fill="white" />
+              {hoveredYtd ? (
+                <>
+                  <circle
+                    className="hover-dot-ring ytd-hover-dot"
+                    cx={hoveredX}
+                    cy={hoveredYtdY}
+                    r="7"
+                  />
+                  <circle cx={hoveredX} cy={hoveredYtdY} r="3" fill="white" />
+                </>
+              ) : null}
               <g transform={`translate(${tooltipX}, ${tooltipY})`} filter={`url(#${gradientId}-shadow)`}>
                 <rect className="tooltip-box" width={tooltipWidth} height={tooltipHeight} rx="12" />
                 <text className="tooltip-date" x="14" y="23">
@@ -341,12 +395,17 @@ export function RollingYoYChart({ points: rawPoints }: { points: NasdaqYoYPoint[
                   x="14"
                   y="51"
                 >
-                  {percent(hovered.yoyPct)}
+                  滚动一年 {percent(hovered.yoyPct)}
                 </text>
-                <text className="tooltip-detail" x="14" y="75">
+                {hoveredYtd ? (
+                  <text className="tooltip-ytd-value" x="14" y="75">
+                    年初至今 {percent(hoveredYtd.ytdPct)}
+                  </text>
+                ) : null}
+                <text className="tooltip-detail" x="14" y={hoveredYtd ? 98 : 75}>
                   当前收盘 {numberFormatter.format(hovered.close)}
                 </text>
-                <text className="tooltip-detail" x="14" y="96">
+                <text className="tooltip-detail" x="14" y={hoveredYtd ? 119 : 96}>
                   去年对比价 {numberFormatter.format(hovered.comparisonClose)}
                 </text>
               </g>
