@@ -5,7 +5,7 @@
 ## 在线访问
 
 - GitHub Pages（易记）：[https://weiproduct.github.io/nasdaq-yoy-dashboard/](https://weiproduct.github.io/nasdaq-yoy-dashboard/)
-- Vercel：[https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app](https://nasdaq-yoy-dashboard-weis-projects-90c8634a.vercel.app)
+- Vercel：[https://nasdaq-yoy-dashboard.vercel.app](https://nasdaq-yoy-dashboard.vercel.app)
 - 源代码：[https://github.com/WeiProduct/nasdaq-yoy-dashboard](https://github.com/WeiProduct/nasdaq-yoy-dashboard)
 
 ## 功能
