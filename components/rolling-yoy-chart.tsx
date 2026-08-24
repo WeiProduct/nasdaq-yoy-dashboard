@@ -269,15 +269,16 @@ export function RollingYoYChart({
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
   const hoveredYtdY = hoveredYtd && chart ? chart.yScale(hoveredYtd.ytdPct) : 0;
   const hoveredIndexY = hovered && chart ? chart.indexYScale(hovered.close) : 0;
-  const tooltipWidth = width < 620 ? 202 : 220;
-  const tooltipHeight = hoveredYtd ? 134 : 112;
-  const tooltipX = hoveredX > width / 2
-    ? hoveredX - tooltipWidth - 14
-    : hoveredX + 14;
-  const tooltipY = Math.max(
-    margin.top,
-    Math.min(height - margin.bottom - tooltipHeight, hoveredY - tooltipHeight / 2),
+  const tooltipWidth = width < 620 ? 238 : 260;
+  const tooltipHeight = 76;
+  const tooltipX = Math.max(
+    margin.left,
+    Math.min(
+      width - margin.right - tooltipWidth,
+      hoveredX - tooltipWidth / 2,
+    ),
   );
+  const tooltipY = margin.top + 8;
   const activePoint = hovered ?? points.at(-1)!;
   const activeYtd = showYtd ? ytdByDate.get(activePoint.date) : undefined;
 
@@ -482,30 +483,27 @@ export function RollingYoYChart({
               ) : null}
               <g transform={`translate(${tooltipX}, ${tooltipY})`} filter={`url(#${gradientId}-shadow)`}>
                 <rect className="tooltip-box" width={tooltipWidth} height={tooltipHeight} rx="12" />
-                <text className="tooltip-date" x="14" y="23">
+                <text className="tooltip-date" x="14" y="20">
                   {fullDateFormatter.format(hovered.dateValue)}
                 </text>
                 <text
                   className={hovered.yoyPct >= 0 ? "tooltip-value positive-fill" : "tooltip-value negative-fill"}
                   x="14"
-                  y="51"
+                  y="45"
                 >
-                  滚动一年 {percent(hovered.yoyPct)}
+                  同比 {percent(hovered.yoyPct)}
                 </text>
                 {hoveredYtd ? (
-                  <text className="tooltip-ytd-value" x="14" y="75">
-                    年初至今 {percent(hoveredYtd.ytdPct)}
+                  <text className="tooltip-ytd-value" x={tooltipWidth - 14} y="45" textAnchor="end">
+                    YTD {percent(hoveredYtd.ytdPct)}
                   </text>
                 ) : null}
                 <text
-                  className={showIndex ? "tooltip-index-value" : "tooltip-detail"}
+                  className="tooltip-detail"
                   x="14"
-                  y={hoveredYtd ? 98 : 75}
+                  y="65"
                 >
-                  {showIndex ? "指数点位" : "当前收盘"} {numberFormatter.format(hovered.close)}
-                </text>
-                <text className="tooltip-detail" x="14" y={hoveredYtd ? 119 : 96}>
-                  去年对比价 {numberFormatter.format(hovered.comparisonClose)}
+                  今年 {numberFormatter.format(hovered.close)} · 去年 {numberFormatter.format(hovered.comparisonClose)}
                 </text>
               </g>
             </g>

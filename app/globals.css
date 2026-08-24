@@ -565,15 +565,8 @@ h1 {
 
 .tooltip-ytd-value {
   fill: var(--ytd);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 740;
-  font-variant-numeric: tabular-nums;
-}
-
-.tooltip-index-value {
-  fill: var(--index);
-  font-size: 9px;
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -587,7 +580,7 @@ h1 {
 
 .tooltip-detail {
   fill: #455149;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 570;
   font-variant-numeric: tabular-nums;
 }
