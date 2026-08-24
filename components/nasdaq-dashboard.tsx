@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RollingYoYChart } from "@/components/rolling-yoy-chart";
+import {
+  filterPointsByRange,
+  summarizeRange,
+  TIME_RANGE_OPTIONS,
+  type TimeRange,
+} from "@/lib/time-range";
 import type { NasdaqYoYResponse } from "@/lib/types";
 import { computeCurrentYearYtd } from "@/lib/ytd";
 
@@ -87,8 +93,21 @@ export function NasdaqDashboard() {
   const [requestVersion, setRequestVersion] = useState(0);
   const [showYtd, setShowYtd] = useState(false);
   const [showIndex, setShowIndex] = useState(false);
+  const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 
   const ytd = useMemo(() => computeCurrentYearYtd(data?.points ?? []), [data]);
+  const visiblePoints = useMemo(
+    () => filterPointsByRange(data?.points ?? [], timeRange),
+    [data, timeRange],
+  );
+  const visibleYtdPoints = useMemo(() => {
+    const visibleStart = visiblePoints[0]?.date;
+    return visibleStart
+      ? ytd.points.filter((point) => point.date >= visibleStart)
+      : [];
+  }, [visiblePoints, ytd.points]);
+  const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
+  const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -135,6 +154,7 @@ export function NasdaqDashboard() {
   if (!data) return <LoadingState />;
 
   const direction = data.stats.latestYoyPct >= 0 ? "positive" : "negative";
+  const rangeStats = visibleStats ?? data.stats;
 
   return (
     <main className="page-shell">
@@ -178,7 +198,7 @@ export function NasdaqDashboard() {
         <section className="chart-panel" aria-labelledby="chart-title">
           <div className="chart-heading">
             <div>
-              <p className="eyebrow">过去 12 个月的每日同比变化</p>
+              <p className="eyebrow">过去{selectedRange.label}的每日同比变化</p>
               <h2 id="chart-title">滚动一年涨跌幅趋势</h2>
             </div>
             <div className="chart-controls">
@@ -219,9 +239,23 @@ export function NasdaqDashboard() {
               </div>
             </div>
           </div>
+          <div className="time-range-selector" role="group" aria-label="选择图表时间范围">
+            {TIME_RANGE_OPTIONS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={timeRange === option.key ? "is-active" : ""}
+                aria-pressed={timeRange === option.key}
+                onClick={() => setTimeRange(option.key)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
           <RollingYoYChart
-            points={data.points}
-            ytdPoints={ytd.points}
+            key={timeRange}
+            points={visiblePoints}
+            ytdPoints={visibleYtdPoints}
             showYtd={showYtd}
             showIndex={showIndex}
           />
@@ -230,19 +264,19 @@ export function NasdaqDashboard() {
         <section className="stats-grid" aria-label="趋势摘要">
           <div className="stat-card">
             <span>区间同比高点</span>
-            <strong className={data.stats.highYoyPct >= 0 ? "positive" : "negative"}>
-              {formatPercent(data.stats.highYoyPct)}
+            <strong className={rangeStats.highYoyPct >= 0 ? "positive" : "negative"}>
+              {formatPercent(rangeStats.highYoyPct)}
             </strong>
           </div>
           <div className="stat-card">
             <span>区间同比低点</span>
-            <strong className={data.stats.lowYoyPct >= 0 ? "positive" : "negative"}>
-              {formatPercent(data.stats.lowYoyPct)}
+            <strong className={rangeStats.lowYoyPct >= 0 ? "positive" : "negative"}>
+              {formatPercent(rangeStats.lowYoyPct)}
             </strong>
           </div>
           <div className="stat-card">
             <span>同比为正交易日</span>
-            <strong>{data.stats.positiveDayShare.toFixed(1)}%</strong>
+            <strong>{rangeStats.positiveDayShare.toFixed(1)}%</strong>
           </div>
           <div className="stat-card">
             <span>最新指数点位</span>

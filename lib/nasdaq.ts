@@ -23,13 +23,17 @@ function formatUtcDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function shiftOneYearBack(date: Date): Date {
-  const targetYear = date.getUTCFullYear() - 1;
+export function shiftYearsBack(date: Date, years: number): Date {
+  const targetYear = date.getUTCFullYear() - years;
   const month = date.getUTCMonth();
   const lastDayOfTargetMonth = new Date(Date.UTC(targetYear, month + 1, 0)).getUTCDate();
   const day = Math.min(date.getUTCDate(), lastDayOfTargetMonth);
 
   return new Date(Date.UTC(targetYear, month, day));
+}
+
+export function shiftOneYearBack(date: Date): Date {
+  return shiftYearsBack(date, 1);
 }
 
 function findObservationOnOrBefore(
@@ -81,12 +85,15 @@ export function mergeLatestObservation(
   );
 }
 
-export function computeRollingYoY(observations: NasdaqObservation[]): NasdaqYoYPoint[] {
+export function computeRollingYoY(
+  observations: NasdaqObservation[],
+  visibleYears = 5,
+): NasdaqYoYPoint[] {
   if (observations.length < 2) return [];
 
   const sorted = [...observations].sort((a, b) => a.date.localeCompare(b.date));
   const latestDate = parseUtcDate(sorted.at(-1)!.date);
-  const visibleStart = shiftOneYearBack(latestDate);
+  const visibleStart = shiftYearsBack(latestDate, visibleYears);
 
   return sorted.flatMap((observation): NasdaqYoYPoint[] => {
     const currentDate = parseUtcDate(observation.date);
@@ -119,7 +126,8 @@ export function computeRollingYoY(observations: NasdaqObservation[]): NasdaqYoYP
 
 function startDateForFredRequest(): string {
   const start = new Date();
-  start.setUTCMonth(start.getUTCMonth() - 27);
+  start.setUTCFullYear(start.getUTCFullYear() - 6);
+  start.setUTCMonth(start.getUTCMonth() - 1);
   return formatUtcDate(start);
 }
 
@@ -174,7 +182,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
     : historicalObservations;
   const points = computeRollingYoY(observations);
 
-  if (points.length < 200) {
+  if (points.length < 1_000) {
     throw new Error(`Expected at least 200 rolling observations, received ${points.length}`);
   }
 

@@ -4,7 +4,9 @@ import {
   mergeLatestObservation,
   parseFredCsv,
   shiftOneYearBack,
+  shiftYearsBack,
 } from "@/lib/nasdaq";
+import { NASDAQ_SNAPSHOT_CSV } from "@/lib/nasdaq-snapshot";
 
 describe("parseFredCsv", () => {
   it("filters invalid values, deduplicates dates, and sorts observations", () => {
@@ -55,6 +57,12 @@ describe("shiftOneYearBack", () => {
       "2023-02-28T00:00:00.000Z",
     );
   });
+
+  it("supports multi-year windows while preserving leap-day clamping", () => {
+    expect(shiftYearsBack(new Date("2024-02-29T00:00:00Z"), 5).toISOString()).toBe(
+      "2019-02-28T00:00:00.000Z",
+    );
+  });
 });
 
 describe("computeRollingYoY", () => {
@@ -80,15 +88,29 @@ describe("computeRollingYoY", () => {
     });
   });
 
-  it("returns only the most recent rolling year", () => {
+  it("uses five visible years by default", () => {
     const result = computeRollingYoY([
-      { date: "2023-01-03", close: 80 },
-      { date: "2024-01-03", close: 100 },
-      { date: "2024-06-03", close: 110 },
-      { date: "2025-01-03", close: 125 },
+      { date: "2019-01-03", close: 50 },
+      { date: "2020-01-03", close: 60 },
+      { date: "2021-01-03", close: 70 },
+      { date: "2024-01-03", close: 90 },
+      { date: "2025-01-03", close: 100 },
+      { date: "2026-01-03", close: 125 },
     ]);
 
-    expect(result.map((point) => point.date)).toEqual(["2024-01-03", "2025-01-03"]);
+    expect(result.map((point) => point.date)).toEqual([
+      "2021-01-03",
+      "2025-01-03",
+      "2026-01-03",
+    ]);
     expect(result.at(-1)?.yoyPct).toBe(25);
+  });
+
+  it("keeps five years available in the bundled fallback snapshot", () => {
+    const result = computeRollingYoY(parseFredCsv(NASDAQ_SNAPSHOT_CSV));
+
+    expect(result.length).toBeGreaterThan(1_200);
+    expect(result[0].date).toMatch(/^2021-/);
+    expect(result.at(-1)?.date).toBe("2026-08-21");
   });
 });

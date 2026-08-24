@@ -278,6 +278,44 @@ h1 {
   gap: 8px;
 }
 
+.time-range-selector {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 3px;
+  width: fit-content;
+  margin: 6px 4px 4px auto;
+  padding: 4px;
+  border: 1px solid #d9ded8;
+  border-radius: 12px;
+  background: #f3f5f0;
+}
+
+.time-range-selector button {
+  min-width: 54px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  color: #68736b;
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 680;
+  white-space: nowrap;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.time-range-selector button:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.time-range-selector button.is-active {
+  color: white;
+  background: var(--ink);
+  box-shadow: 0 2px 7px rgba(20, 33, 22, 0.18);
+}
+
 .legend > span {
   display: inline-flex;
   align-items: center;
@@ -776,6 +814,19 @@ h1 {
 
   .chart-toggle-row {
     justify-content: flex-start;
+  }
+
+  .time-range-selector {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .time-range-selector button {
+    min-width: 0;
+    padding-right: 4px;
+    padding-left: 4px;
   }
 
   .chart-wrap {

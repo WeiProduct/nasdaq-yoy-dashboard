@@ -44,6 +44,12 @@ const monthFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "UTC",
 });
 
+const shortDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "numeric",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -56,6 +62,19 @@ const axisNumberFormatter = new Intl.NumberFormat("zh-CN", {
 function percent(value: number, digits = 2) {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(digits)}%`;
+}
+
+function formatXAxisTick(date: Date, spanDays: number) {
+  if (spanDays <= 62) return shortDateFormatter.format(date);
+  if (spanDays <= 550) {
+    return date.getUTCMonth() === 0
+      ? `${date.getUTCFullYear()}年`
+      : monthFormatter.format(date);
+  }
+
+  return date.getUTCMonth() === 0
+    ? `${date.getUTCFullYear()}年`
+    : `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月`;
 }
 
 function useContainerWidth() {
@@ -129,6 +148,10 @@ export function RollingYoYChart({
     if (showYtd) visibleValues.push(...ytdPoints.map((point) => point.ytdPct));
     const [valueMin = 0, valueMax = 0] = extent(visibleValues);
     if (!dateMin || !dateMax) return null;
+    const spanDays = Math.max(
+      1,
+      (dateMax.getTime() - dateMin.getTime()) / 86_400_000,
+    );
 
     const rawSpan = Math.max(valueMax - valueMin, 1);
     const padding = Math.max(rawSpan * 0.14, 1.5);
@@ -175,6 +198,7 @@ export function RollingYoYChart({
       : null;
 
     const innerHeight = height - margin.top - margin.bottom;
+    const xTickCount = width < 620 && spanDays > 800 ? 3 : width < 620 ? 4 : 7;
     const zeroOffset = Math.max(
       0,
       Math.min(100, ((yScale(0) - margin.top) / innerHeight) * 100),
@@ -189,9 +213,10 @@ export function RollingYoYChart({
       indexLinePath,
       indexYScale,
       zeroOffset,
-      xTicks: xScale.ticks(width < 620 ? 4 : 7),
+      xTicks: xScale.ticks(xTickCount),
       yTicks: yScale.ticks(width < 620 ? 4 : 5),
       indexTicks: indexYScale.ticks(width < 620 ? 4 : 5),
+      spanDays,
     };
   }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showIndex, showYtd, width, ytdPoints]);
 
@@ -379,9 +404,7 @@ export function RollingYoYChart({
                   y={height - margin.bottom + 26}
                   textAnchor={index === 0 ? "start" : index === chart.xTicks.length - 1 ? "end" : "middle"}
                 >
-                  {tick.getUTCMonth() === 0
-                    ? `${tick.getUTCFullYear()}年`
-                    : monthFormatter.format(tick)}
+                  {formatXAxisTick(tick, chart.spanDays)}
                 </text>
               </g>
             ))}
