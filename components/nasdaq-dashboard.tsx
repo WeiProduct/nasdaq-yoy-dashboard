@@ -13,6 +13,7 @@ import {
 import type { NasdaqYoYResponse } from "@/lib/types";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
 import { summarizeFearGreedDistribution } from "@/lib/fear-greed-distribution";
+import { computeSimpleMovingAverage } from "@/lib/moving-average";
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
@@ -135,6 +136,11 @@ export function NasdaqDashboard() {
         )
       : [];
   }, [data?.fearGreed?.points, visiblePoints]);
+  const movingAverage50Points = useMemo(() => {
+    if (data?.movingAverage50?.length) return data.movingAverage50;
+    const sourcePoints = data?.points ?? [];
+    return computeSimpleMovingAverage(sourcePoints, 50, sourcePoints[0]?.date);
+  }, [data]);
   const visibleMovingAveragePoints = useMemo(() => {
     const visibleStart = visiblePoints[0]?.date;
     const visibleEnd = visiblePoints.at(-1)?.date;
@@ -148,11 +154,11 @@ export function NasdaqDashboard() {
     const visibleStart = visiblePoints[0]?.date;
     const visibleEnd = visiblePoints.at(-1)?.date;
     return visibleStart && visibleEnd
-      ? (data?.movingAverage50 ?? []).filter(
+      ? movingAverage50Points.filter(
           (point) => point.date >= visibleStart && point.date <= visibleEnd,
         )
       : [];
-  }, [data?.movingAverage50, visiblePoints]);
+  }, [movingAverage50Points, visiblePoints]);
   const fearGreedDistribution = useMemo(
     () => summarizeFearGreedDistribution(visibleFearGreedPoints),
     [visibleFearGreedPoints],
