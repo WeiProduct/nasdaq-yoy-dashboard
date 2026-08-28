@@ -37,7 +37,7 @@ export type FearGreedHighlightRegionPoint = {
   score: number;
 };
 
-export type FearGreedHighlightRegion = {
+type FearGreedDirectionalHighlightRegion = {
   zone: Exclude<FearGreedZoneKey, "neutral">;
   threshold: number;
   points: FearGreedHighlightRegionPoint[];
@@ -46,6 +46,22 @@ export type FearGreedHighlightRegion = {
   startHasCrossing: boolean;
   endHasCrossing: boolean;
 };
+
+type FearGreedNeutralHighlightRegion = {
+  zone: "neutral";
+  lowerThreshold: 45;
+  upperThreshold: 55;
+  startTimestamp: number;
+  endTimestamp: number;
+  startBoundaryScore: number;
+  endBoundaryScore: number;
+  startHasCrossing: boolean;
+  endHasCrossing: boolean;
+};
+
+export type FearGreedHighlightRegion =
+  | FearGreedDirectionalHighlightRegion
+  | FearGreedNeutralHighlightRegion;
 
 type FearGreedDirectionalZone = Exclude<FearGreedZoneKey, "neutral">;
 
@@ -68,8 +84,8 @@ export function resolveFearGreedHighlightZone(
   dataZone: FearGreedZoneKey | null,
   pointerY: number | null,
   extremeFearThresholdY: number,
-): FearGreedDirectionalZone | null {
-  if (!dataZone || dataZone === "neutral") return null;
+): FearGreedZoneKey | null {
+  if (!dataZone) return null;
   if (
     dataZone === "extreme-fear"
     && pointerY !== null
@@ -163,10 +179,12 @@ function interpolateThresholdCrossing(
 export function findFearGreedHighlightRun(
   points: FearGreedPoint[],
   targetDate: string,
-  zone: FearGreedDirectionalZone,
+  zone: FearGreedZoneKey,
 ): FearGreedZoneRun | null {
   const targetIndex = points.findIndex((point) => point.date === targetDate);
-  const { contains } = HIGHLIGHT_DEFINITIONS[zone];
+  const contains = zone === "neutral"
+    ? (score: number) => score >= 45 && score <= 55
+    : HIGHLIGHT_DEFINITIONS[zone].contains;
   if (targetIndex < 0 || !contains(points[targetIndex].score)) return null;
 
   let startIndex = targetIndex;
@@ -187,15 +205,47 @@ export function buildFearGreedHighlightRegion(
   points: FearGreedPoint[],
   run: FearGreedZoneRun,
 ): FearGreedHighlightRegion | null {
-  if (run.zone === "neutral") return null;
-
   const startPoint = points[run.startIndex];
   const endPoint = points[run.endIndex];
   if (!startPoint || !endPoint) return null;
 
-  const threshold = HIGHLIGHT_DEFINITIONS[run.zone].threshold;
   const previousPoint = points[run.startIndex - 1];
   const nextPoint = points[run.endIndex + 1];
+
+  if (run.zone === "neutral") {
+    const startThreshold = previousPoint?.score !== undefined
+      ? (previousPoint.score < 45 ? 45 : 55)
+      : startPoint.score;
+    const endThreshold = nextPoint?.score !== undefined
+      ? (nextPoint.score < 45 ? 45 : 55)
+      : endPoint.score;
+    const startBoundary = previousPoint
+      ? interpolateThresholdCrossing(previousPoint, startPoint, startThreshold)
+      : {
+          timestamp: Date.parse(`${startPoint.date}T00:00:00.000Z`),
+          score: startPoint.score,
+        };
+    const endBoundary = nextPoint
+      ? interpolateThresholdCrossing(endPoint, nextPoint, endThreshold)
+      : {
+          timestamp: Date.parse(`${endPoint.date}T00:00:00.000Z`),
+          score: endPoint.score,
+        };
+
+    return {
+      zone: "neutral",
+      lowerThreshold: 45,
+      upperThreshold: 55,
+      startTimestamp: startBoundary.timestamp,
+      endTimestamp: endBoundary.timestamp,
+      startBoundaryScore: startBoundary.score,
+      endBoundaryScore: endBoundary.score,
+      startHasCrossing: Boolean(previousPoint),
+      endHasCrossing: Boolean(nextPoint),
+    };
+  }
+
+  const threshold = HIGHLIGHT_DEFINITIONS[run.zone].threshold;
   const startBoundary = previousPoint
     ? interpolateThresholdCrossing(previousPoint, startPoint, threshold)
     : { timestamp: Date.parse(`${startPoint.date}T00:00:00.000Z`), score: threshold };

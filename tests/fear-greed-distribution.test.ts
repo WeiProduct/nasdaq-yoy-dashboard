@@ -48,7 +48,7 @@ describe("resolveFearGreedHighlightZone", () => {
   it("does not change the other sentiment zones", () => {
     expect(resolveFearGreedHighlightZone("fear", 120, 180)).toBe("fear");
     expect(resolveFearGreedHighlightZone("greed", 220, 180)).toBe("greed");
-    expect(resolveFearGreedHighlightZone("neutral", 120, 180)).toBeNull();
+    expect(resolveFearGreedHighlightZone("neutral", 120, 180)).toBe("neutral");
   });
 });
 
@@ -149,12 +149,14 @@ describe("findFearGreedZoneRun", () => {
     const run = findFearGreedZoneRun(points, "2026-01-03", "extreme-greed");
     const region = buildFearGreedHighlightRegion(points, run!);
 
-    expect(region?.threshold).toBe(75);
-    expect(region?.points[0]).toEqual({
+    expect(region?.zone).toBe("extreme-greed");
+    if (!region || region.zone === "neutral") throw new Error("Expected a directional region");
+    expect(region.threshold).toBe(75);
+    expect(region.points[0]).toEqual({
       timestamp: Date.parse("2026-01-01T20:00:00.000Z"),
       score: 75,
     });
-    expect(region?.points.at(-1)).toEqual({
+    expect(region.points.at(-1)).toEqual({
       timestamp: Date.parse("2026-01-04T13:20:00.000Z"),
       score: 75,
     });
@@ -172,9 +174,11 @@ describe("findFearGreedZoneRun", () => {
     const region = buildFearGreedHighlightRegion(fearCycle, run!);
 
     expect(run).toMatchObject({ startIndex: 1, endIndex: 3 });
-    expect(region?.threshold).toBe(45);
-    expect(region?.points[0].score).toBe(45);
-    expect(region?.points.at(-1)?.score).toBe(45);
+    expect(region?.zone).toBe("fear");
+    if (!region || region.zone === "neutral") throw new Error("Expected a directional region");
+    expect(region.threshold).toBe(45);
+    expect(region.points[0].score).toBe(45);
+    expect(region.points.at(-1)?.score).toBe(45);
 
     const extremeRun = findFearGreedHighlightRun(
       fearCycle,
@@ -196,9 +200,35 @@ describe("findFearGreedZoneRun", () => {
     const region = buildFearGreedHighlightRegion(greedCycle, run!);
 
     expect(run).toMatchObject({ startIndex: 1, endIndex: 3 });
-    expect(region?.threshold).toBe(55);
-    expect(region?.points[0].score).toBe(55);
-    expect(region?.points.at(-1)?.score).toBe(55);
+    expect(region?.zone).toBe("greed");
+    if (!region || region.zone === "neutral") throw new Error("Expected a directional region");
+    expect(region.threshold).toBe(55);
+    expect(region.points[0].score).toBe(55);
+    expect(region.points.at(-1)?.score).toBe(55);
+  });
+
+  it("highlights a complete neutral cycle between both boundary crossings", () => {
+    const neutralCycle: FearGreedPoint[] = [
+      { date: "2026-05-01", score: 40, rating: "fear" },
+      { date: "2026-05-02", score: 48, rating: "neutral" },
+      { date: "2026-05-03", score: 52, rating: "neutral" },
+      { date: "2026-05-04", score: 60, rating: "greed" },
+    ];
+    const run = findFearGreedHighlightRun(neutralCycle, "2026-05-02", "neutral");
+    const region = buildFearGreedHighlightRegion(neutralCycle, run!);
+
+    expect(run).toMatchObject({ startIndex: 1, endIndex: 2 });
+    expect(region).toEqual({
+      zone: "neutral",
+      lowerThreshold: 45,
+      upperThreshold: 55,
+      startTimestamp: Date.parse("2026-05-01T15:00:00.000Z"),
+      endTimestamp: Date.parse("2026-05-03T09:00:00.000Z"),
+      startBoundaryScore: 45,
+      endBoundaryScore: 55,
+      startHasCrossing: true,
+      endHasCrossing: true,
+    });
   });
 
   it("does not invent an end crossing for an active cycle", () => {

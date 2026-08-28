@@ -514,25 +514,66 @@ export function RollingYoYChart({
     ? (() => {
         const region = buildFearGreedHighlightRegion(fearGreedPoints, sentimentZoneRun);
         if (!region) return null;
+        const startX = chart.xScale(new Date(region.startTimestamp));
+        const endX = chart.xScale(new Date(region.endTimestamp));
+
+        if (region.zone === "neutral") {
+          const lowerY = chart.fearGreedYScale(region.lowerThreshold);
+          const upperY = chart.fearGreedYScale(region.upperThreshold);
+          const fillPath = area<{ timestamp: number }>()
+            .x((point) => chart.xScale(new Date(point.timestamp)))
+            .y0(lowerY)
+            .y1(upperY)
+            .curve(curveLinear)([
+              { timestamp: region.startTimestamp },
+              { timestamp: region.endTimestamp },
+            ]);
+          const startY = chart.fearGreedYScale(region.startBoundaryScore);
+          const endY = chart.fearGreedYScale(region.endBoundaryScore);
+
+          return {
+            zone: region.zone,
+            thresholdLines: [
+              { threshold: region.upperThreshold, y: upperY },
+              { threshold: region.lowerThreshold, y: lowerY },
+            ],
+            fillPath,
+            startX,
+            endX,
+            startY,
+            endY,
+            startHasCrossing: region.startHasCrossing,
+            endHasCrossing: region.endHasCrossing,
+            startLabelY: region.startBoundaryScore === region.lowerThreshold
+              ? startY + 17
+              : startY - 9,
+            endLabelY: region.endBoundaryScore === region.lowerThreshold
+              ? endY + 17
+              : endY - 9,
+            startLabel: shortDateFormatter.format(new Date(region.startTimestamp)),
+            endLabel: shortDateFormatter.format(new Date(region.endTimestamp)),
+          };
+        }
+
         const baselineY = chart.fearGreedYScale(region.threshold);
         const fillPath = area<(typeof region.points)[number]>()
           .x((point) => chart.xScale(new Date(point.timestamp)))
           .y0(baselineY)
           .y1((point) => chart.fearGreedYScale(point.score))
           .curve(curveLinear)(region.points);
-        const startX = chart.xScale(new Date(region.startTimestamp));
-        const endX = chart.xScale(new Date(region.endTimestamp));
 
         return {
           zone: highlightedSentimentZone,
-          threshold: region.threshold,
+          thresholdLines: [{ threshold: region.threshold, y: baselineY }],
           fillPath,
-          baselineY,
           startX,
           endX,
+          startY: baselineY,
+          endY: baselineY,
           startHasCrossing: region.startHasCrossing,
           endHasCrossing: region.endHasCrossing,
-          labelY: highlightedSentimentZone.endsWith("fear") ? baselineY - 9 : baselineY + 17,
+          startLabelY: highlightedSentimentZone.endsWith("fear") ? baselineY - 9 : baselineY + 17,
+          endLabelY: highlightedSentimentZone.endsWith("fear") ? baselineY - 9 : baselineY + 17,
           startLabel: shortDateFormatter.format(new Date(region.startTimestamp)),
           endLabel: shortDateFormatter.format(new Date(region.endTimestamp)),
         };
@@ -748,22 +789,26 @@ export function RollingYoYChart({
             ) : null}
             {sentimentZoneHighlight ? (
               <g className={`sentiment-zone-highlight ${sentimentZoneHighlight.zone}`}>
-                <line
-                  className="sentiment-zone-threshold"
-                  x1={margin.left}
-                  x2={width - margin.right}
-                  y1={sentimentZoneHighlight.baselineY}
-                  y2={sentimentZoneHighlight.baselineY}
-                />
-                <text
-                  className="sentiment-zone-threshold-label"
-                  x={margin.left - 8}
-                  y={sentimentZoneHighlight.baselineY}
-                  dominantBaseline="middle"
-                  textAnchor="end"
-                >
-                  {sentimentZoneHighlight.threshold}
-                </text>
+                {sentimentZoneHighlight.thresholdLines.map(({ threshold, y }) => (
+                  <g key={threshold}>
+                    <line
+                      className="sentiment-zone-threshold"
+                      x1={margin.left}
+                      x2={width - margin.right}
+                      y1={y}
+                      y2={y}
+                    />
+                    <text
+                      className="sentiment-zone-threshold-label"
+                      x={margin.left - 8}
+                      y={y}
+                      dominantBaseline="middle"
+                      textAnchor="end"
+                    >
+                      {threshold}
+                    </text>
+                  </g>
+                ))}
                 <path
                   className={`sentiment-zone-fill ${sentimentZoneHighlight.zone}`}
                   d={sentimentZoneHighlight.fillPath ?? undefined}
@@ -772,7 +817,7 @@ export function RollingYoYChart({
                   <circle
                     className={`sentiment-zone-boundary ${sentimentZoneHighlight.zone}`}
                     cx={sentimentZoneHighlight.startX}
-                    cy={sentimentZoneHighlight.baselineY}
+                    cy={sentimentZoneHighlight.startY}
                     r="4"
                   />
                 ) : null}
@@ -780,7 +825,7 @@ export function RollingYoYChart({
                   <circle
                     className={`sentiment-zone-boundary ${sentimentZoneHighlight.zone}`}
                     cx={sentimentZoneHighlight.endX}
-                    cy={sentimentZoneHighlight.baselineY}
+                    cy={sentimentZoneHighlight.endY}
                     r="4"
                   />
                 ) : null}
@@ -788,7 +833,7 @@ export function RollingYoYChart({
                   <text
                     className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
                     x={sentimentZoneHighlight.startX + 7}
-                    y={sentimentZoneHighlight.labelY}
+                    y={sentimentZoneHighlight.startLabelY}
                     textAnchor="start"
                   >
                     {sentimentZoneHighlight.startLabel}
@@ -798,7 +843,7 @@ export function RollingYoYChart({
                   <text
                     className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
                     x={sentimentZoneHighlight.endX - 7}
-                    y={sentimentZoneHighlight.labelY}
+                    y={sentimentZoneHighlight.endLabelY}
                     textAnchor="end"
                   >
                     {sentimentZoneHighlight.endLabel}
