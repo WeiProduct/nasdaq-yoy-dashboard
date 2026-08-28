@@ -611,8 +611,8 @@ h1 {
 }
 
 .extreme-greed-zone-fill {
-  fill: color-mix(in srgb, var(--extreme-greed) 20%, transparent);
-  stroke: color-mix(in srgb, var(--extreme-greed) 52%, transparent);
+  fill: color-mix(in srgb, var(--extreme-greed) 28%, transparent);
+  stroke: color-mix(in srgb, var(--extreme-greed) 62%, transparent);
   stroke-width: 1;
 }
 

@@ -497,8 +497,7 @@ export function RollingYoYChart({
     hoverSeriesCandidates,
     hoveredPointerY,
   );
-  const extremeGreedRun = selectedHoverSeries?.key === "fear-greed"
-    && hoveredFearGreed
+  const extremeGreedRun = hoveredFearGreed
     && fearGreedZoneForScore(hoveredFearGreed.score) === "extreme-greed"
     ? findFearGreedZoneRun(fearGreedPoints, hoveredFearGreed.date, "extreme-greed")
     : null;
@@ -760,11 +759,19 @@ export function RollingYoYChart({
                 />
                 <text
                   className="extreme-greed-zone-label"
-                  x={(extremeGreedHighlight.left + extremeGreedHighlight.right) / 2}
-                  y={extremeGreedHighlight.bottom - 9}
-                  textAnchor="middle"
+                  x={extremeGreedHighlight.left + 6}
+                  y={extremeGreedHighlight.top + 14}
+                  textAnchor="start"
                 >
-                  极度贪婪 76–100 · 开始 {extremeGreedHighlight.startLabel} → 结束 {extremeGreedHighlight.endLabel}
+                  开始 {extremeGreedHighlight.startLabel}
+                </text>
+                <text
+                  className="extreme-greed-zone-label"
+                  x={extremeGreedHighlight.right - 6}
+                  y={extremeGreedHighlight.bottom - 8}
+                  textAnchor="end"
+                >
+                  结束 {extremeGreedHighlight.endLabel}
                 </text>
               </g>
             ) : null}
