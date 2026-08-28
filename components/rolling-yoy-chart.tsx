@@ -57,6 +57,7 @@ type HoverSeries = {
   x: number;
   y: number;
   valueText: string;
+  detailText?: string;
   ariaText: string;
   textClassName: string;
   dotClassName?: string;
@@ -441,7 +442,8 @@ export function RollingYoYChart({
       x: hoveredX,
       y: hoveredYtdY,
       valueText: `YTD ${percent(hoveredYtd.ytdPct)}`,
-      ariaText: `年初至今 ${percent(hoveredYtd.ytdPct)}`,
+      detailText: `年初 ${numberFormatter.format(hoveredYtd.yearStartClose)} · 当时 ${numberFormatter.format(hoveredYtd.close)}`,
+      ariaText: `年初至今 ${percent(hoveredYtd.ytdPct)}，年初点位 ${numberFormatter.format(hoveredYtd.yearStartClose)}，当时点位 ${numberFormatter.format(hoveredYtd.close)}`,
       textClassName: "tooltip-value ytd-fill",
       dotClassName: "ytd-hover-dot",
     });
@@ -485,7 +487,7 @@ export function RollingYoYChart({
     hoveredPointerY,
   );
   const tooltipWidth = width < 620 ? 218 : 240;
-  const tooltipHeight = 55;
+  const tooltipHeight = selectedHoverSeries?.detailText ? 72 : 55;
   const tooltipX = Math.max(
     4,
     Math.min(
@@ -504,7 +506,9 @@ export function RollingYoYChart({
     : undefined;
   const defaultAriaValue = [
     showYoY ? `同比 ${percent(activePoint.yoyPct)}` : null,
-    activeYtd ? `年初至今 ${percent(activeYtd.ytdPct)}` : null,
+    activeYtd
+      ? `年初至今 ${percent(activeYtd.ytdPct)}，年初点位 ${numberFormatter.format(activeYtd.yearStartClose)}，当时点位 ${numberFormatter.format(activeYtd.close)}`
+      : null,
     showIndex ? `指数收盘 ${numberFormatter.format(activePoint.close)}` : null,
     activeMovingAverage
       ? `125 日均线 ${numberFormatter.format(activeMovingAverage.value)}`
@@ -759,9 +763,18 @@ export function RollingYoYChart({
                 <text className="tooltip-date" x="14" y="20">
                   {fullDateFormatter.format(hovered.dateValue)}
                 </text>
-                <text className={selectedHoverSeries.textClassName} x="14" y="45">
+                <text
+                  className={selectedHoverSeries.textClassName}
+                  x="14"
+                  y={selectedHoverSeries.detailText ? 42 : 45}
+                >
                   {selectedHoverSeries.valueText}
                 </text>
+                {selectedHoverSeries.detailText ? (
+                  <text className="tooltip-detail" x="14" y="62">
+                    {selectedHoverSeries.detailText}
+                  </text>
+                ) : null}
               </g>
             </g>
           ) : null}
