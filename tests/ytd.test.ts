@@ -1,48 +1,81 @@
 import { describe, expect, it } from "vitest";
-import { computeCurrentYearYtd } from "@/lib/ytd";
+import { computeYearlyYtd } from "@/lib/ytd";
 
-describe("computeCurrentYearYtd", () => {
-  it("uses the previous calendar year's final trading close as the baseline", () => {
-    const result = computeCurrentYearYtd([
-      { date: "2025-12-30", close: 100 },
-      { date: "2025-12-31", close: 105 },
-      { date: "2026-01-02", close: 110.25 },
-      { date: "2026-08-24", close: 126 },
+describe("computeYearlyYtd", () => {
+  it("uses each calendar year's first trading close as that year's baseline", () => {
+    const result = computeYearlyYtd([
+      { date: "2025-01-03", close: 100 },
+      { date: "2025-12-31", close: 120 },
+      { date: "2026-01-02", close: 110 },
+      { date: "2026-08-24", close: 132 },
     ]);
 
-    expect(result.baselineDate).toBe("2025-12-31");
-    expect(result.baselineClose).toBe(105);
-    expect(result.points).toEqual([
-      { date: "2025-12-31", close: 105, ytdPct: 0 },
-      { date: "2026-01-02", close: 110.25, ytdPct: 5 },
-      { date: "2026-08-24", close: 126, ytdPct: 20 },
+    expect(result).toEqual([
+      {
+        date: "2025-01-03",
+        close: 100,
+        yearStartDate: "2025-01-03",
+        yearStartClose: 100,
+        ytdPct: 0,
+      },
+      {
+        date: "2025-12-31",
+        close: 120,
+        yearStartDate: "2025-01-03",
+        yearStartClose: 100,
+        ytdPct: 20,
+      },
+      {
+        date: "2026-01-02",
+        close: 110,
+        yearStartDate: "2026-01-02",
+        yearStartClose: 110,
+        ytdPct: 0,
+      },
+      {
+        date: "2026-08-24",
+        close: 132,
+        yearStartDate: "2026-01-02",
+        yearStartClose: 110,
+        ytdPct: 20,
+      },
     ]);
-    expect(result.latestYtdPct).toBe(20);
   });
 
-  it("sorts input and does not mix the prior year's partial YTD into the series", () => {
-    const result = computeCurrentYearYtd([
-      { date: "2026-02-02", close: 110 },
-      { date: "2025-08-01", close: 90 },
-      { date: "2025-12-31", close: 100 },
-      { date: "2026-01-02", close: 102 },
-    ]);
+  it("keeps a pre-window baseline when returning a partial first visible year", () => {
+    const result = computeYearlyYtd([
+      { date: "2022-08-24", close: 120 },
+      { date: "2021-08-24", close: 110 },
+      { date: "2021-01-04", close: 100 },
+      { date: "2022-01-03", close: 150 },
+    ], "2021-08-24");
 
-    expect(result.points.map((point) => point.date)).toEqual([
-      "2025-12-31",
-      "2026-01-02",
-      "2026-02-02",
+    expect(result).toEqual([
+      {
+        date: "2021-08-24",
+        close: 110,
+        yearStartDate: "2021-01-04",
+        yearStartClose: 100,
+        ytdPct: 10,
+      },
+      {
+        date: "2022-01-03",
+        close: 150,
+        yearStartDate: "2022-01-03",
+        yearStartClose: 150,
+        ytdPct: 0,
+      },
+      {
+        date: "2022-08-24",
+        close: 120,
+        yearStartDate: "2022-01-03",
+        yearStartClose: 150,
+        ytdPct: -20,
+      },
     ]);
   });
 
-  it("returns an empty series when the prior year-end baseline is unavailable", () => {
-    expect(
-      computeCurrentYearYtd([{ date: "2026-01-02", close: 100 }]),
-    ).toEqual({
-      baselineDate: null,
-      baselineClose: null,
-      latestYtdPct: null,
-      points: [],
-    });
+  it("returns an empty series for empty input", () => {
+    expect(computeYearlyYtd([])).toEqual([]);
   });
 });

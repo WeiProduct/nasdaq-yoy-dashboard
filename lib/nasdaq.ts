@@ -8,6 +8,7 @@ import {
   type LiveNasdaqObservation,
 } from "@/lib/nasdaq-live";
 import { NASDAQ_SNAPSHOT_CSV } from "@/lib/nasdaq-snapshot";
+import { computeYearlyYtd } from "@/lib/ytd";
 
 const FRED_SERIES_ID = "NASDAQCOM";
 const FRED_SERIES_URL = `https://fred.stlouisfed.org/series/${FRED_SERIES_ID}`;
@@ -187,6 +188,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
   }
 
   const latest = points.at(-1)!;
+  const ytdPoints = computeYearlyYtd(observations, points[0].date);
   let highYoyPct = -Infinity;
   let lowYoyPct = Infinity;
   let positiveDays = 0;
@@ -221,8 +223,9 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
       url: FRED_SERIES_URL,
     },
     methodology:
-      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证。每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1。",
+      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证。同比为每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；年初至今线以每个自然年首个交易日收盘为 0% 逐年重置。",
     points,
+    ytdPoints,
     stats: {
       latestClose: latest.close,
       latestYoyPct: latest.yoyPct,

@@ -3,6 +3,14 @@ export type NasdaqObservation = {
   close: number;
 };
 
+export type NasdaqYtdPoint = {
+  date: string;
+  close: number;
+  yearStartDate: string;
+  yearStartClose: number;
+  ytdPct: number;
+};
+
 export type NasdaqYoYPoint = {
   date: string;
   close: number;
@@ -37,6 +45,7 @@ export type NasdaqYoYResponse = {
   };
   methodology: string;
   points: NasdaqYoYPoint[];
+  ytdPoints: NasdaqYtdPoint[];
   stats: {
     latestClose: number;
     latestYoyPct: number;

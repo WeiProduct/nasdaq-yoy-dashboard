@@ -133,6 +133,20 @@ export function RollingYoYChart({
     () => new Map(ytdPoints.map((point) => [point.date, point])),
     [ytdPoints],
   );
+  const ytdSeries = useMemo(() => {
+    const seriesByYear = new Map<string, YtdChartPoint[]>();
+
+    for (const point of ytdPoints) {
+      const series = seriesByYear.get(point.yearStartDate) ?? [];
+      series.push(point);
+      seriesByYear.set(point.yearStartDate, series);
+    }
+
+    return Array.from(seriesByYear, ([yearStartDate, seriesPoints]) => ({
+      yearStartDate,
+      points: seriesPoints,
+    }));
+  }, [ytdPoints]);
 
   const height = width > 0 && width < 620 ? 350 : 430;
   const margin = width < 620
@@ -184,12 +198,15 @@ export function RollingYoYChart({
       .y0(yScale(0))
       .y1((point) => yScale(point.yoyPct))
       .curve(curveLinear)(points);
-    const ytdLinePath = showYtd
-      ? line<YtdChartPoint>()
-          .x((point) => xScale(point.dateValue))
-          .y((point) => yScale(point.ytdPct))
-          .curve(curveLinear)(ytdPoints)
-      : null;
+    const ytdLinePaths = showYtd
+      ? ytdSeries.map((series) => ({
+          yearStartDate: series.yearStartDate,
+          path: line<YtdChartPoint>()
+            .x((point) => xScale(point.dateValue))
+            .y((point) => yScale(point.ytdPct))
+            .curve(curveLinear)(series.points),
+        }))
+      : [];
     const indexLinePath = showIndex
       ? line<ChartPoint>()
           .x((point) => xScale(point.dateValue))
@@ -209,7 +226,7 @@ export function RollingYoYChart({
       yScale,
       linePath,
       areaPath,
-      ytdLinePath,
+      ytdLinePaths,
       indexLinePath,
       indexYScale,
       zeroOffset,
@@ -218,7 +235,7 @@ export function RollingYoYChart({
       indexTicks: indexYScale.ticks(width < 620 ? 4 : 5),
       spanDays,
     };
-  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showIndex, showYtd, width, ytdPoints]);
+  }, [height, margin.bottom, margin.left, margin.right, margin.top, points, showIndex, showYtd, width, ytdPoints, ytdSeries]);
 
   const nearestIndex = useMemo(
     () => bisector<ChartPoint, number>((point) => point.timestamp).center,
@@ -420,9 +437,13 @@ export function RollingYoYChart({
                 stroke={`url(#${gradientId}-line)`}
               />
             ) : null}
-            {chart.ytdLinePath ? (
-              <path className="ytd-line-path" d={chart.ytdLinePath} />
-            ) : null}
+            {chart.ytdLinePaths.map((series) => series.path ? (
+              <path
+                key={series.yearStartDate}
+                className="ytd-line-path"
+                d={series.path}
+              />
+            ) : null)}
             {chart.indexLinePath ? (
               <path className="index-line-path" d={chart.indexLinePath} />
             ) : null}

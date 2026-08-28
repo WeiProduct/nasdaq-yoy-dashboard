@@ -1,53 +1,33 @@
-import type { NasdaqYoYPoint } from "@/lib/types";
+import type { NasdaqObservation, NasdaqYtdPoint } from "@/lib/types";
 
-export type YtdPoint = {
-  date: string;
-  close: number;
-  ytdPct: number;
-};
+export type YtdPoint = NasdaqYtdPoint;
 
-export type CurrentYearYtd = {
-  baselineDate: string | null;
-  baselineClose: number | null;
-  latestYtdPct: number | null;
-  points: YtdPoint[];
-};
+export function computeYearlyYtd(
+  observations: NasdaqObservation[],
+  visibleStart?: string,
+): YtdPoint[] {
+  const sorted = [...observations]
+    .filter((point) => Number.isFinite(point.close) && point.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const baselineByYear = new Map<string, NasdaqObservation>();
 
-export function computeCurrentYearYtd(
-  points: Pick<NasdaqYoYPoint, "date" | "close">[],
-): CurrentYearYtd {
-  const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
-  const latest = sorted.at(-1);
-
-  if (!latest) {
-    return { baselineDate: null, baselineClose: null, latestYtdPct: null, points: [] };
+  for (const point of sorted) {
+    const year = point.date.slice(0, 4);
+    if (!baselineByYear.has(year)) baselineByYear.set(year, point);
   }
 
-  const currentYear = latest.date.slice(0, 4);
-  const yearStart = `${currentYear}-01-01`;
-  const baseline = sorted.filter((point) => point.date < yearStart).at(-1);
+  return sorted.flatMap((point): YtdPoint[] => {
+    if (visibleStart && point.date < visibleStart) return [];
 
-  if (!baseline || baseline.close <= 0) {
-    return { baselineDate: null, baselineClose: null, latestYtdPct: null, points: [] };
-  }
+    const baseline = baselineByYear.get(point.date.slice(0, 4));
+    if (!baseline) return [];
 
-  const ytdPoints = sorted
-    .filter((point) => point.date >= yearStart)
-    .map((point) => ({
+    return [{
       date: point.date,
       close: point.close,
+      yearStartDate: baseline.date,
+      yearStartClose: baseline.close,
       ytdPct: ((point.close - baseline.close) / baseline.close) * 100,
-    }));
-
-  const pointsWithBaseline: YtdPoint[] = [
-    { date: baseline.date, close: baseline.close, ytdPct: 0 },
-    ...ytdPoints,
-  ];
-
-  return {
-    baselineDate: baseline.date,
-    baselineClose: baseline.close,
-    latestYtdPct: pointsWithBaseline.at(-1)?.ytdPct ?? null,
-    points: pointsWithBaseline,
-  };
+    }];
+  });
 }

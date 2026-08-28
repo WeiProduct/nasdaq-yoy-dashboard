@@ -9,7 +9,6 @@ import {
   type TimeRange,
 } from "@/lib/time-range";
 import type { NasdaqYoYResponse } from "@/lib/types";
-import { computeCurrentYearYtd } from "@/lib/ytd";
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
@@ -95,7 +94,7 @@ export function NasdaqDashboard() {
   const [showIndex, setShowIndex] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 
-  const ytd = useMemo(() => computeCurrentYearYtd(data?.points ?? []), [data]);
+  const latestYtdPct = data?.ytdPoints.at(-1)?.ytdPct ?? null;
   const visiblePoints = useMemo(
     () => filterPointsByRange(data?.points ?? [], timeRange),
     [data, timeRange],
@@ -103,9 +102,9 @@ export function NasdaqDashboard() {
   const visibleYtdPoints = useMemo(() => {
     const visibleStart = visiblePoints[0]?.date;
     return visibleStart
-      ? ytd.points.filter((point) => point.date >= visibleStart)
+      ? (data?.ytdPoints ?? []).filter((point) => point.date >= visibleStart)
       : [];
-  }, [visiblePoints, ytd.points]);
+  }, [data?.ytdPoints, visiblePoints]);
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
 
@@ -206,7 +205,7 @@ export function NasdaqDashboard() {
                 <span role="listitem"><i className="legend-swatch positive-bg" />同比为正</span>
                 <span role="listitem"><i className="legend-swatch negative-bg" />同比为负</span>
                 {showYtd ? (
-                  <span role="listitem"><i className="legend-swatch ytd-bg" />年初至今</span>
+                  <span role="listitem"><i className="legend-swatch ytd-bg" />年初至今（逐年重置）</span>
                 ) : null}
                 {showIndex ? (
                   <span role="listitem"><i className="legend-swatch index-bg" />指数点位</span>
@@ -218,12 +217,12 @@ export function NasdaqDashboard() {
                   className={`compare-toggle ytd-toggle${showYtd ? " is-active" : ""}`}
                   aria-pressed={showYtd}
                   onClick={() => setShowYtd((current) => !current)}
-                  disabled={ytd.latestYtdPct === null}
+                  disabled={latestYtdPct === null}
                 >
                   <span className="toggle-indicator" aria-hidden="true"><i /></span>
                   <span>对比年初至今</span>
-                  {ytd.latestYtdPct === null ? null : (
-                    <strong>{formatPercent(ytd.latestYtdPct)}</strong>
+                  {latestYtdPct === null ? null : (
+                    <strong>{formatPercent(latestYtdPct)}</strong>
                   )}
                 </button>
                 <button
