@@ -32,17 +32,31 @@ export type FearGreedZoneRun = {
   endIndex: number;
 };
 
-export type FearGreedExtremeRegionPoint = {
+export type FearGreedHighlightRegionPoint = {
   timestamp: number;
   score: number;
 };
 
-export type FearGreedExtremeRegion = {
-  zone: "extreme-fear" | "extreme-greed";
+export type FearGreedHighlightRegion = {
+  zone: Exclude<FearGreedZoneKey, "neutral">;
   threshold: number;
-  points: FearGreedExtremeRegionPoint[];
+  points: FearGreedHighlightRegionPoint[];
   startTimestamp: number;
   endTimestamp: number;
+  startHasCrossing: boolean;
+  endHasCrossing: boolean;
+};
+
+type FearGreedDirectionalZone = Exclude<FearGreedZoneKey, "neutral">;
+
+const HIGHLIGHT_DEFINITIONS: Record<
+  FearGreedDirectionalZone,
+  { threshold: number; contains: (score: number) => boolean }
+> = {
+  "extreme-fear": { threshold: 25, contains: (score) => score < 25 },
+  fear: { threshold: 45, contains: (score) => score < 45 },
+  greed: { threshold: 55, contains: (score) => score > 55 },
+  "extreme-greed": { threshold: 75, contains: (score) => score > 75 },
 };
 
 export function fearGreedZoneForScore(score: number): FearGreedZoneKey | null {
@@ -115,7 +129,7 @@ function interpolateThresholdCrossing(
   from: FearGreedPoint,
   to: FearGreedPoint,
   threshold: number,
-): FearGreedExtremeRegionPoint {
+): FearGreedHighlightRegionPoint {
   const fromTimestamp = Date.parse(`${from.date}T00:00:00.000Z`);
   const toTimestamp = Date.parse(`${to.date}T00:00:00.000Z`);
   const scoreDelta = to.score - from.score;
@@ -129,17 +143,40 @@ function interpolateThresholdCrossing(
   };
 }
 
-export function buildFearGreedExtremeRegion(
+export function findFearGreedHighlightRun(
+  points: FearGreedPoint[],
+  targetDate: string,
+  zone: FearGreedDirectionalZone,
+): FearGreedZoneRun | null {
+  const targetIndex = points.findIndex((point) => point.date === targetDate);
+  const { contains } = HIGHLIGHT_DEFINITIONS[zone];
+  if (targetIndex < 0 || !contains(points[targetIndex].score)) return null;
+
+  let startIndex = targetIndex;
+  let endIndex = targetIndex;
+  while (startIndex > 0 && contains(points[startIndex - 1].score)) startIndex -= 1;
+  while (endIndex < points.length - 1 && contains(points[endIndex + 1].score)) endIndex += 1;
+
+  return {
+    zone,
+    startDate: points[startIndex].date,
+    endDate: points[endIndex].date,
+    startIndex,
+    endIndex,
+  };
+}
+
+export function buildFearGreedHighlightRegion(
   points: FearGreedPoint[],
   run: FearGreedZoneRun,
-): FearGreedExtremeRegion | null {
-  if (run.zone !== "extreme-fear" && run.zone !== "extreme-greed") return null;
+): FearGreedHighlightRegion | null {
+  if (run.zone === "neutral") return null;
 
   const startPoint = points[run.startIndex];
   const endPoint = points[run.endIndex];
   if (!startPoint || !endPoint) return null;
 
-  const threshold = run.zone === "extreme-fear" ? 25 : 75;
+  const threshold = HIGHLIGHT_DEFINITIONS[run.zone].threshold;
   const previousPoint = points[run.startIndex - 1];
   const nextPoint = points[run.endIndex + 1];
   const startBoundary = previousPoint
@@ -161,5 +198,7 @@ export function buildFearGreedExtremeRegion(
     points: [startBoundary, ...interiorPoints, endBoundary],
     startTimestamp: startBoundary.timestamp,
     endTimestamp: endBoundary.timestamp,
+    startHasCrossing: Boolean(previousPoint),
+    endHasCrossing: Boolean(nextPoint),
   };
 }

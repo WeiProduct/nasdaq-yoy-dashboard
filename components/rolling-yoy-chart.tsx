@@ -31,9 +31,9 @@ import {
 import type { YtdPoint } from "@/lib/ytd";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
 import {
-  buildFearGreedExtremeRegion,
+  buildFearGreedHighlightRegion,
   fearGreedZoneForScore,
-  findFearGreedZoneRun,
+  findFearGreedHighlightRun,
 } from "@/lib/fear-greed-distribution";
 
 type ChartPoint = NasdaqYoYPoint & {
@@ -506,16 +506,15 @@ export function RollingYoYChart({
   const hoveredFearGreedZone = hoveredFearGreed
     ? fearGreedZoneForScore(hoveredFearGreed.score)
     : null;
-  const highlightedExtremeZone = hoveredFearGreedZone === "extreme-fear"
-    || hoveredFearGreedZone === "extreme-greed"
-    ? hoveredFearGreedZone
+  const highlightedSentimentZone = hoveredFearGreedZone === "neutral"
+    ? null
+    : hoveredFearGreedZone;
+  const sentimentZoneRun = hoveredFearGreed && highlightedSentimentZone
+    ? findFearGreedHighlightRun(fearGreedPoints, hoveredFearGreed.date, highlightedSentimentZone)
     : null;
-  const extremeZoneRun = hoveredFearGreed && highlightedExtremeZone
-    ? findFearGreedZoneRun(fearGreedPoints, hoveredFearGreed.date, highlightedExtremeZone)
-    : null;
-  const extremeZoneHighlight = extremeZoneRun && chart && highlightedExtremeZone
+  const sentimentZoneHighlight = sentimentZoneRun && chart && highlightedSentimentZone
     ? (() => {
-        const region = buildFearGreedExtremeRegion(fearGreedPoints, extremeZoneRun);
+        const region = buildFearGreedHighlightRegion(fearGreedPoints, sentimentZoneRun);
         if (!region) return null;
         const baselineY = chart.fearGreedYScale(region.threshold);
         const fillPath = area<(typeof region.points)[number]>()
@@ -527,12 +526,15 @@ export function RollingYoYChart({
         const endX = chart.xScale(new Date(region.endTimestamp));
 
         return {
-          zone: highlightedExtremeZone,
+          zone: highlightedSentimentZone,
+          threshold: region.threshold,
           fillPath,
           baselineY,
           startX,
           endX,
-          labelY: highlightedExtremeZone === "extreme-fear" ? baselineY - 9 : baselineY + 17,
+          startHasCrossing: region.startHasCrossing,
+          endHasCrossing: region.endHasCrossing,
+          labelY: highlightedSentimentZone.endsWith("fear") ? baselineY - 9 : baselineY + 17,
           startLabel: rangeBoundaryDateFormatter.format(new Date(region.startTimestamp)),
           endLabel: rangeBoundaryDateFormatter.format(new Date(region.endTimestamp)),
         };
@@ -746,39 +748,59 @@ export function RollingYoYChart({
             {chart.areaPath ? (
               <path className="area-path" d={chart.areaPath} fill={`url(#${gradientId}-area)`} />
             ) : null}
-            {extremeZoneHighlight ? (
-              <g className={`extreme-zone-highlight ${extremeZoneHighlight.zone}`}>
-                <path
-                  className={`extreme-zone-fill ${extremeZoneHighlight.zone}`}
-                  d={extremeZoneHighlight.fillPath ?? undefined}
-                />
-                <circle
-                  className={`extreme-zone-boundary ${extremeZoneHighlight.zone}`}
-                  cx={extremeZoneHighlight.startX}
-                  cy={extremeZoneHighlight.baselineY}
-                  r="4"
-                />
-                <circle
-                  className={`extreme-zone-boundary ${extremeZoneHighlight.zone}`}
-                  cx={extremeZoneHighlight.endX}
-                  cy={extremeZoneHighlight.baselineY}
-                  r="4"
+            {sentimentZoneHighlight ? (
+              <g className={`sentiment-zone-highlight ${sentimentZoneHighlight.zone}`}>
+                <line
+                  className="sentiment-zone-threshold"
+                  x1={margin.left}
+                  x2={width - margin.right}
+                  y1={sentimentZoneHighlight.baselineY}
+                  y2={sentimentZoneHighlight.baselineY}
                 />
                 <text
-                  className={`extreme-zone-label ${extremeZoneHighlight.zone}`}
-                  x={extremeZoneHighlight.startX + 7}
-                  y={extremeZoneHighlight.labelY}
-                  textAnchor="start"
-                >
-                  开始 {extremeZoneHighlight.startLabel}
-                </text>
-                <text
-                  className={`extreme-zone-label ${extremeZoneHighlight.zone}`}
-                  x={extremeZoneHighlight.endX - 7}
-                  y={extremeZoneHighlight.labelY}
+                  className="sentiment-zone-threshold-label"
+                  x={margin.left - 8}
+                  y={sentimentZoneHighlight.baselineY}
+                  dominantBaseline="middle"
                   textAnchor="end"
                 >
-                  结束 {extremeZoneHighlight.endLabel}
+                  {sentimentZoneHighlight.threshold}
+                </text>
+                <path
+                  className={`sentiment-zone-fill ${sentimentZoneHighlight.zone}`}
+                  d={sentimentZoneHighlight.fillPath ?? undefined}
+                />
+                {sentimentZoneHighlight.startHasCrossing ? (
+                  <circle
+                    className={`sentiment-zone-boundary ${sentimentZoneHighlight.zone}`}
+                    cx={sentimentZoneHighlight.startX}
+                    cy={sentimentZoneHighlight.baselineY}
+                    r="4"
+                  />
+                ) : null}
+                {sentimentZoneHighlight.endHasCrossing ? (
+                  <circle
+                    className={`sentiment-zone-boundary ${sentimentZoneHighlight.zone}`}
+                    cx={sentimentZoneHighlight.endX}
+                    cy={sentimentZoneHighlight.baselineY}
+                    r="4"
+                  />
+                ) : null}
+                <text
+                  className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
+                  x={sentimentZoneHighlight.startX + 7}
+                  y={sentimentZoneHighlight.labelY}
+                  textAnchor="start"
+                >
+                  {sentimentZoneHighlight.startHasCrossing ? "开始" : "区间起点"} {sentimentZoneHighlight.startLabel}
+                </text>
+                <text
+                  className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
+                  x={sentimentZoneHighlight.endX - 7}
+                  y={sentimentZoneHighlight.labelY}
+                  textAnchor="end"
+                >
+                  {sentimentZoneHighlight.endHasCrossing ? "结束" : "持续至今"} {sentimentZoneHighlight.endLabel}
                 </text>
               </g>
             ) : null}

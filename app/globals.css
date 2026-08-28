@@ -610,42 +610,40 @@ h1 {
   animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
-.extreme-zone-fill {
+.sentiment-zone-fill {
   stroke: none;
-}
-
-.extreme-zone-fill.extreme-greed {
-  fill: color-mix(in srgb, var(--extreme-greed) 28%, transparent);
-  stroke: color-mix(in srgb, var(--extreme-greed) 62%, transparent);
-}
-
-.extreme-zone-fill.extreme-fear {
   fill: color-mix(in srgb, var(--fear-greed) 28%, transparent);
 }
 
-.extreme-zone-boundary {
-  fill: var(--extreme-greed);
+.sentiment-zone-threshold {
+  stroke: color-mix(in srgb, var(--fear-greed) 54%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.sentiment-zone-threshold-label {
+  fill: var(--fear-greed);
+  font-size: 10px;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+.sentiment-zone-boundary {
+  fill: var(--fear-greed);
   stroke: rgba(255, 255, 253, 0.96);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
-.extreme-zone-boundary.extreme-fear {
+.sentiment-zone-label {
   fill: var(--fear-greed);
-}
-
-.extreme-zone-label {
-  fill: #056747;
   stroke: rgba(255, 255, 253, 0.92);
   stroke-width: 3px;
   paint-order: stroke fill;
   font-size: 9px;
   font-weight: 760;
   font-variant-numeric: tabular-nums;
-}
-
-.extreme-zone-label.extreme-fear {
-  fill: var(--fear-greed);
 }
 
 .index-axis-tick {

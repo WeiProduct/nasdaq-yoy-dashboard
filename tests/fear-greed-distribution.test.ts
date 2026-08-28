@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildFearGreedExtremeRegion,
+  buildFearGreedHighlightRegion,
   fearGreedZoneForScore,
+  findFearGreedHighlightRun,
   findFearGreedZoneRun,
   summarizeFearGreedDistribution,
 } from "@/lib/fear-greed-distribution";
@@ -108,11 +109,13 @@ describe("findFearGreedZoneRun", () => {
       endIndex: 3,
     });
 
-    expect(buildFearGreedExtremeRegion(fearPoints, run!)).toEqual({
+    expect(buildFearGreedHighlightRegion(fearPoints, run!)).toEqual({
       zone: "extreme-fear",
       threshold: 25,
       startTimestamp: Date.parse("2026-03-24T10:00:00.000Z"),
       endTimestamp: Date.parse("2026-03-27T15:00:00.000Z"),
+      startHasCrossing: true,
+      endHasCrossing: true,
       points: [
         { timestamp: Date.parse("2026-03-24T10:00:00.000Z"), score: 25 },
         { timestamp: Date.parse("2026-03-25T00:00:00.000Z"), score: 18 },
@@ -125,7 +128,7 @@ describe("findFearGreedZoneRun", () => {
 
   it("clips extreme greed to the 75 threshold crossings", () => {
     const run = findFearGreedZoneRun(points, "2026-01-03", "extreme-greed");
-    const region = buildFearGreedExtremeRegion(points, run!);
+    const region = buildFearGreedHighlightRegion(points, run!);
 
     expect(region?.threshold).toBe(75);
     expect(region?.points[0]).toEqual({
@@ -135,6 +138,56 @@ describe("findFearGreedZoneRun", () => {
     expect(region?.points.at(-1)).toEqual({
       timestamp: Date.parse("2026-01-04T13:20:00.000Z"),
       score: 75,
+    });
+  });
+
+  it("highlights the complete fear cycle against the 45 boundary", () => {
+    const fearCycle: FearGreedPoint[] = [
+      { date: "2026-04-01", score: 50, rating: "neutral" },
+      { date: "2026-04-02", score: 40, rating: "fear" },
+      { date: "2026-04-03", score: 20, rating: "extreme fear" },
+      { date: "2026-04-04", score: 35, rating: "fear" },
+      { date: "2026-04-05", score: 55, rating: "neutral" },
+    ];
+    const run = findFearGreedHighlightRun(fearCycle, "2026-04-02", "fear");
+    const region = buildFearGreedHighlightRegion(fearCycle, run!);
+
+    expect(run).toMatchObject({ startIndex: 1, endIndex: 3 });
+    expect(region?.threshold).toBe(45);
+    expect(region?.points[0].score).toBe(45);
+    expect(region?.points.at(-1)?.score).toBe(45);
+  });
+
+  it("highlights the complete greed cycle against the 55 boundary", () => {
+    const greedCycle: FearGreedPoint[] = [
+      { date: "2026-05-01", score: 50, rating: "neutral" },
+      { date: "2026-05-02", score: 60, rating: "greed" },
+      { date: "2026-05-03", score: 80, rating: "extreme greed" },
+      { date: "2026-05-04", score: 70, rating: "greed" },
+      { date: "2026-05-05", score: 50, rating: "neutral" },
+    ];
+    const run = findFearGreedHighlightRun(greedCycle, "2026-05-02", "greed");
+    const region = buildFearGreedHighlightRegion(greedCycle, run!);
+
+    expect(run).toMatchObject({ startIndex: 1, endIndex: 3 });
+    expect(region?.threshold).toBe(55);
+    expect(region?.points[0].score).toBe(55);
+    expect(region?.points.at(-1)?.score).toBe(55);
+  });
+
+  it("does not invent an end crossing for an active cycle", () => {
+    const activeGreed: FearGreedPoint[] = [
+      { date: "2026-06-01", score: 50, rating: "neutral" },
+      { date: "2026-06-02", score: 60, rating: "greed" },
+      { date: "2026-06-03", score: 65, rating: "greed" },
+    ];
+    const run = findFearGreedHighlightRun(activeGreed, "2026-06-03", "greed");
+    const region = buildFearGreedHighlightRegion(activeGreed, run!);
+
+    expect(region).toMatchObject({
+      threshold: 55,
+      startHasCrossing: true,
+      endHasCrossing: false,
     });
   });
 });
