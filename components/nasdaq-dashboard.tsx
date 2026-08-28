@@ -10,6 +10,7 @@ import {
 } from "@/lib/time-range";
 import type { NasdaqYoYResponse } from "@/lib/types";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
+import { summarizeFearGreedDistribution } from "@/lib/fear-greed-distribution";
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
@@ -128,6 +129,10 @@ export function NasdaqDashboard() {
         )
       : [];
   }, [data?.movingAverage125, visiblePoints]);
+  const fearGreedDistribution = useMemo(
+    () => summarizeFearGreedDistribution(visibleFearGreedPoints),
+    [visibleFearGreedPoints],
+  );
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
 
@@ -336,6 +341,58 @@ export function NasdaqDashboard() {
             showFearGreed={showFearGreed}
           />
         </section>
+
+        {showFearGreed ? (
+          <section className="fear-greed-distribution" aria-labelledby="fear-greed-distribution-title">
+            <div className="fear-greed-distribution-heading">
+              <div>
+                <p className="eyebrow">过去{selectedRange.label} · 有效情绪日期分布</p>
+                <h2 id="fear-greed-distribution-title">CNN 情绪区域占比</h2>
+              </div>
+              <strong>{fearGreedDistribution.total} 个日期</strong>
+            </div>
+
+            {fearGreedDistribution.total > 0 ? (
+              <>
+                <div
+                  className="fear-greed-distribution-bar"
+                  role="img"
+                  aria-label={fearGreedDistribution.zones
+                    .map((zone) => `${zone.label} ${zone.percentage.toFixed(1)}%`)
+                    .join("，")}
+                >
+                  {fearGreedDistribution.zones.map((zone) => (
+                    <span
+                      key={zone.key}
+                      className={`fear-greed-zone-segment ${zone.key}`}
+                      style={{ width: `${zone.percentage}%` }}
+                      title={`${zone.label} ${zone.percentage.toFixed(1)}%`}
+                    />
+                  ))}
+                </div>
+
+                <div className="fear-greed-zone-grid">
+                  {fearGreedDistribution.zones.map((zone) => (
+                    <div className={`fear-greed-zone-card ${zone.key}`} key={zone.key}>
+                      <span>
+                        <i aria-hidden="true" />
+                        {zone.label}
+                      </span>
+                      <strong>{zone.percentage.toFixed(1)}%</strong>
+                      <small>{zone.min}–{zone.max} · {zone.count} 日</small>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="fear-greed-distribution-note">
+                  百分比以当前范围内 CNN 提供的 {fearGreedDistribution.total} 个有效日期为分母；缺失日期不参与计算。
+                </p>
+              </>
+            ) : (
+              <p className="fear-greed-distribution-empty">当前时间范围暂无 CNN 情绪历史数据。</p>
+            )}
+          </section>
+        ) : null}
 
         <section className="stats-grid" aria-label="趋势摘要">
           <div className="stat-card">
