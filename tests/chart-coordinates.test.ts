@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mapClientXToRange,
+  pointAxisDomainValues,
   selectFirstSeriesBelowPointer,
 } from "../lib/chart-coordinates";
 
@@ -41,5 +42,19 @@ describe("selectFirstSeriesBelowPointer", () => {
   it("uses visual-series order for keyboard navigation and empty ties", () => {
     expect(selectFirstSeriesBelowPointer(candidates, null)?.key).toBe("top");
     expect(selectFirstSeriesBelowPointer([], 100)).toBeUndefined();
+  });
+});
+
+describe("pointAxisDomainValues", () => {
+  it("keeps the hidden index range in the scale when only SMA is visible", () => {
+    expect(pointAxisDomainValues([100, 120], [104, 108])).toEqual([
+      100, 120, 104, 108,
+    ]);
+  });
+
+  it("drops non-finite upstream values", () => {
+    expect(pointAxisDomainValues([100, Number.NaN], [Number.POSITIVE_INFINITY, 105])).toEqual([
+      100, 105,
+    ]);
   });
 });

@@ -15,6 +15,8 @@ export type NasdaqMovingAveragePoint = {
   date: string;
   value: number;
   period: number;
+  windowStartDate: string;
+  windowEndDate: string;
 };
 
 export type NasdaqYoYPoint = {

@@ -24,6 +24,8 @@ export function computeSimpleMovingAverage(
       date: sorted[index].date,
       value: rollingTotal / period,
       period,
+      windowStartDate: sorted[index - period + 1].date,
+      windowEndDate: sorted[index].date,
     });
   }
 

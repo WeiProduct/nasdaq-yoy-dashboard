@@ -25,6 +25,7 @@ import type {
 } from "@/lib/types";
 import {
   mapClientXToRange,
+  pointAxisDomainValues,
   selectFirstSeriesBelowPointer,
 } from "@/lib/chart-coordinates";
 import type { YtdPoint } from "@/lib/ytd";
@@ -118,6 +119,10 @@ function formatXAxisTick(date: Date, spanDays: number) {
   return date.getUTCMonth() === 0
     ? `${date.getUTCFullYear()}年`
     : `${date.getUTCFullYear()}年${date.getUTCMonth() + 1}月`;
+}
+
+function formatShortDate(date: string) {
+  return shortDateFormatter.format(new Date(`${date}T00:00:00.000Z`));
 }
 
 function useContainerWidth() {
@@ -249,11 +254,10 @@ export function RollingYoYChart({
     if (width <= 0 || points.length === 0) return null;
 
     const [dateMin, dateMax] = extent(points, (point) => point.dateValue);
-    const pointAxisValues = [
-      ...(showIndex ? points.map((point) => point.close) : []),
-      ...(showMovingAverage ? movingAveragePoints.map((point) => point.value) : []),
-    ];
-    if (pointAxisValues.length === 0) pointAxisValues.push(...points.map((point) => point.close));
+    const pointAxisValues = pointAxisDomainValues(
+      points.map((point) => point.close),
+      showMovingAverage ? movingAveragePoints.map((point) => point.value) : [],
+    );
     const [closeMin = 0, closeMax = 0] = extent(pointAxisValues);
     const visibleValues = showYoY ? points.map((point) => point.yoyPct) : [];
     if (showYtd) visibleValues.push(...ytdPoints.map((point) => point.ytdPct));
@@ -476,6 +480,7 @@ export function RollingYoYChart({
       x: hoveredX,
       y: hoveredMovingAverageY,
       valueText: `SMA125 ${numberFormatter.format(hoveredMovingAverage.value)}`,
+      detailText: `${hoveredMovingAverage.period}个交易日 · ${formatShortDate(hoveredMovingAverage.windowStartDate)}–${formatShortDate(hoveredMovingAverage.windowEndDate)}`,
       ariaText: `125 日均线 ${numberFormatter.format(hoveredMovingAverage.value)}`,
       textClassName: "tooltip-value moving-average-fill",
       dotClassName: "moving-average-hover-dot",

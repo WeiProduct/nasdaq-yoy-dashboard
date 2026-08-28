@@ -310,7 +310,7 @@ export function NasdaqDashboard() {
                   <span className="toggle-indicator" aria-hidden="true"><i /></span>
                   <span>125日均线</span>
                   {latestMovingAverage === null ? null : (
-                    <strong>{compactPointFormatter.format(latestMovingAverage)}</strong>
+                    <strong>{numberFormatter.format(latestMovingAverage)}</strong>
                   )}
                 </button>
                 <button
@@ -460,7 +460,7 @@ export function NasdaqDashboard() {
         <footer className="data-footer">
           <div>
             <p><strong>计算口径</strong> {data.methodology}</p>
-            <p>数据截至 {formatDate(data.asOf)}。本图使用日收盘数据，不代表盘中实时行情，也不构成投资建议。</p>
+            <p>数据截至 {formatDate(data.asOf)}。历史区间使用日收盘；当日未收盘时，SMA125 含最新公开点位并属于盘中估算。内容不构成投资建议。</p>
             {data.intraday.active && data.intraday.updatedAt ? (
               <p className="intraday-notice">
                 当日点位每 10 分钟刷新；最近行情时间（美东）{intradayTimeFormatter.format(new Date(data.intraday.updatedAt))}。Nasdaq 公开展示数据至少延迟 1 分钟。

@@ -11,8 +11,20 @@ describe("computeSimpleMovingAverage", () => {
     ], 3);
 
     expect(result).toEqual([
-      { date: "2026-01-05", value: 20, period: 3 },
-      { date: "2026-01-06", value: 30, period: 3 },
+      {
+        date: "2026-01-05",
+        value: 20,
+        period: 3,
+        windowStartDate: "2026-01-01",
+        windowEndDate: "2026-01-05",
+      },
+      {
+        date: "2026-01-06",
+        value: 30,
+        period: 3,
+        windowStartDate: "2026-01-02",
+        windowEndDate: "2026-01-06",
+      },
     ]);
   });
 
@@ -25,7 +37,13 @@ describe("computeSimpleMovingAverage", () => {
     ], 3, "2026-01-06");
 
     expect(result).toEqual([
-      { date: "2026-01-06", value: 30, period: 3 },
+      {
+        date: "2026-01-06",
+        value: 30,
+        period: 3,
+        windowStartDate: "2026-01-02",
+        windowEndDate: "2026-01-06",
+      },
     ]);
   });
 

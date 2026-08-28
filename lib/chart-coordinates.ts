@@ -22,6 +22,13 @@ export type VerticalSeriesCandidate<T extends string = string> = {
   y: number;
 };
 
+export function pointAxisDomainValues(
+  indexCloses: number[],
+  movingAverageValues: number[],
+): number[] {
+  return [...indexCloses, ...movingAverageValues].filter(Number.isFinite);
+}
+
 export function selectFirstSeriesBelowPointer<T extends VerticalSeriesCandidate>(
   candidates: T[],
   pointerY: number | null,
