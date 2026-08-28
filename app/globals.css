@@ -14,6 +14,8 @@
   --ytd-soft: #e9eefc;
   --index: #984f12;
   --index-soft: #f8eee4;
+  --fear-greed: #7c3aed;
+  --fear-greed-soft: #f1eafe;
   --focus: #1967d2;
   --shadow: 0 26px 80px rgba(30, 43, 33, 0.1), 0 2px 10px rgba(30, 43, 33, 0.05);
   color-scheme: light;
@@ -344,6 +346,10 @@ h1 {
   background: var(--index);
 }
 
+.fear-greed-bg {
+  background: var(--fear-greed);
+}
+
 .compare-toggle {
   display: inline-flex;
   align-items: center;
@@ -424,6 +430,34 @@ h1 {
   background: var(--index);
 }
 
+.yoy-toggle.is-active {
+  border-color: color-mix(in srgb, var(--positive) 44%, white);
+  color: #076637;
+  background: var(--positive-soft);
+}
+
+.yoy-toggle strong {
+  color: var(--positive);
+}
+
+.yoy-toggle.is-active .toggle-indicator {
+  background: var(--positive);
+}
+
+.fear-greed-toggle.is-active {
+  border-color: color-mix(in srgb, var(--fear-greed) 44%, white);
+  color: #5b21b6;
+  background: var(--fear-greed-soft);
+}
+
+.fear-greed-toggle strong {
+  color: var(--fear-greed);
+}
+
+.fear-greed-toggle.is-active .toggle-indicator {
+  background: var(--fear-greed);
+}
+
 .chart-wrap {
   width: 100%;
   min-height: 390px;
@@ -488,6 +522,16 @@ h1 {
   animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
+.fear-greed-line-path {
+  fill: none;
+  stroke: var(--fear-greed);
+  stroke-width: 2.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
 .index-axis-tick {
   stroke: color-mix(in srgb, var(--index) 48%, white);
 }
@@ -495,6 +539,21 @@ h1 {
 .index-axis-label,
 .index-axis-unit {
   fill: var(--index);
+}
+
+.fear-greed-axis-tick {
+  stroke: color-mix(in srgb, var(--fear-greed) 48%, white);
+}
+
+.fear-greed-axis-label,
+.fear-greed-axis-unit {
+  fill: var(--fear-greed);
+}
+
+.fear-greed-mid-line {
+  stroke: color-mix(in srgb, var(--fear-greed) 42%, white);
+  stroke-width: 1.1;
+  stroke-dasharray: 3 4;
 }
 
 .axis-unit {
@@ -545,6 +604,10 @@ h1 {
   fill: var(--index);
 }
 
+.fear-greed-hover-dot {
+  fill: var(--fear-greed);
+}
+
 .tooltip-box {
   fill: rgba(255, 255, 253, 0.98);
   stroke: #d7ddd7;
@@ -566,6 +629,13 @@ h1 {
 .tooltip-ytd-value {
   fill: var(--ytd);
   font-size: 12px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-fear-greed-value {
+  fill: var(--fear-greed);
+  font-size: 11px;
   font-weight: 740;
   font-variant-numeric: tabular-nums;
 }

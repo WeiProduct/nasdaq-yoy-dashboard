@@ -9,6 +9,7 @@ import {
   type TimeRange,
 } from "@/lib/time-range";
 import type { NasdaqYoYResponse } from "@/lib/types";
+import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
 
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
@@ -90,8 +91,10 @@ export function NasdaqDashboard() {
   const [data, setData] = useState<NasdaqYoYResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [requestVersion, setRequestVersion] = useState(0);
+  const [showYoY, setShowYoY] = useState(true);
   const [showYtd, setShowYtd] = useState(false);
   const [showIndex, setShowIndex] = useState(false);
+  const [showFearGreed, setShowFearGreed] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 
   const latestYtdPct = data?.ytdPoints.at(-1)?.ytdPct ?? null;
@@ -105,6 +108,15 @@ export function NasdaqDashboard() {
       ? (data?.ytdPoints ?? []).filter((point) => point.date >= visibleStart)
       : [];
   }, [data?.ytdPoints, visiblePoints]);
+  const visibleFearGreedPoints = useMemo(() => {
+    const visibleStart = visiblePoints[0]?.date;
+    const visibleEnd = visiblePoints.at(-1)?.date;
+    return visibleStart && visibleEnd
+      ? (data?.fearGreed?.points ?? []).filter(
+          (point) => point.date >= visibleStart && point.date <= visibleEnd,
+        )
+      : [];
+  }, [data?.fearGreed?.points, visiblePoints]);
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
 
@@ -202,16 +214,33 @@ export function NasdaqDashboard() {
             </div>
             <div className="chart-controls">
               <div className="legend" role="list" aria-label="图表图例">
-                <span role="listitem"><i className="legend-swatch positive-bg" />同比为正</span>
-                <span role="listitem"><i className="legend-swatch negative-bg" />同比为负</span>
+                {showYoY ? (
+                  <>
+                    <span role="listitem"><i className="legend-swatch positive-bg" />同比为正</span>
+                    <span role="listitem"><i className="legend-swatch negative-bg" />同比为负</span>
+                  </>
+                ) : null}
                 {showYtd ? (
                   <span role="listitem"><i className="legend-swatch ytd-bg" />年初至今（逐年重置）</span>
                 ) : null}
                 {showIndex ? (
                   <span role="listitem"><i className="legend-swatch index-bg" />指数点位</span>
                 ) : null}
+                {showFearGreed ? (
+                  <span role="listitem"><i className="legend-swatch fear-greed-bg" />CNN 恐惧与贪婪</span>
+                ) : null}
               </div>
               <div className="chart-toggle-row">
+                <button
+                  type="button"
+                  className={`compare-toggle yoy-toggle${showYoY ? " is-active" : ""}`}
+                  aria-pressed={showYoY}
+                  onClick={() => setShowYoY((current) => !current)}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>同步去年</span>
+                  <strong>{formatPercent(data.stats.latestYoyPct)}</strong>
+                </button>
                 <button
                   type="button"
                   className={`compare-toggle ytd-toggle${showYtd ? " is-active" : ""}`}
@@ -235,6 +264,22 @@ export function NasdaqDashboard() {
                   <span>显示指数点数</span>
                   <strong>{compactPointFormatter.format(data.stats.latestClose)}</strong>
                 </button>
+                <button
+                  type="button"
+                  className={`compare-toggle fear-greed-toggle${showFearGreed ? " is-active" : ""}`}
+                  aria-pressed={showFearGreed}
+                  onClick={() => setShowFearGreed((current) => !current)}
+                  disabled={!data.fearGreed?.available}
+                  title={data.fearGreed?.available ? "显示 CNN Fear & Greed Index" : "CNN 数据暂不可用"}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>CNN 恐惧贪婪</span>
+                  {data.fearGreed?.latestScore === null || data.fearGreed?.latestScore === undefined ? null : (
+                    <strong>
+                      {data.fearGreed.latestScore.toFixed(0)} · {fearGreedRatingLabel(data.fearGreed.latestRating)}
+                    </strong>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -255,8 +300,11 @@ export function NasdaqDashboard() {
             key={timeRange}
             points={visiblePoints}
             ytdPoints={visibleYtdPoints}
+            fearGreedPoints={visibleFearGreedPoints}
+            showYoY={showYoY}
             showYtd={showYtd}
             showIndex={showIndex}
+            showFearGreed={showFearGreed}
           />
         </section>
 
@@ -305,6 +353,11 @@ export function NasdaqDashboard() {
             <a href={data.intraday.source.url} target="_blank" rel="noreferrer">
               当日：{data.intraday.source.name}<span aria-hidden="true">↗</span>
             </a>
+            {data.fearGreed?.source ? (
+              <a href={data.fearGreed.source.url} target="_blank" rel="noreferrer">
+                情绪：{data.fearGreed.source.name}<span aria-hidden="true">↗</span>
+              </a>
+            ) : null}
           </div>
         </footer>
       </article>

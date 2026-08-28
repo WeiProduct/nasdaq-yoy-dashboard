@@ -9,6 +9,7 @@ import {
 } from "@/lib/nasdaq-live";
 import { NASDAQ_SNAPSHOT_CSV } from "@/lib/nasdaq-snapshot";
 import { computeYearlyYtd } from "@/lib/ytd";
+import { getFearGreedSeries } from "@/lib/fear-greed";
 
 const FRED_SERIES_ID = "NASDAQCOM";
 const FRED_SERIES_URL = `https://fred.stlouisfed.org/series/${FRED_SERIES_ID}`;
@@ -145,6 +146,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
     console.warn("Nasdaq intraday quote unavailable; serving FRED history only", error);
     return null;
   });
+  const fearGreedPromise = getFearGreedSeries();
 
   try {
     const response = await fetch(csvUrl, {
@@ -170,6 +172,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
 
   const historicalObservations = parseFredCsv(csv);
   const liveObservation = await liveObservationPromise;
+  const fearGreed = await fearGreedPromise;
   const intradayActive = Boolean(
     liveObservation &&
       (!historicalObservations.at(-1) ||
@@ -223,9 +226,10 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
       url: FRED_SERIES_URL,
     },
     methodology:
-      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证。同比为每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；年初至今线以每个自然年首个交易日收盘为 0% 逐年重置。",
+      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证。同比为每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；年初至今线以每个自然年首个交易日收盘为 0% 逐年重置；市场情绪为 CNN Fear & Greed Index 官方 0–100 分。",
     points,
     ytdPoints,
+    fearGreed,
     stats: {
       latestClose: latest.close,
       latestYoyPct: latest.yoyPct,

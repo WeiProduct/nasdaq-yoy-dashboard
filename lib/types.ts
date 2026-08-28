@@ -20,6 +20,24 @@ export type NasdaqYoYPoint = {
   yoyPct: number;
 };
 
+export type FearGreedPoint = {
+  date: string;
+  score: number;
+  rating: string;
+};
+
+export type FearGreedSeries = {
+  available: boolean;
+  asOf: string | null;
+  latestScore: number | null;
+  latestRating: string | null;
+  points: FearGreedPoint[];
+  source: {
+    name: string;
+    url: string;
+  };
+};
+
 export type NasdaqYoYResponse = {
   name: string;
   symbol: string;
@@ -46,6 +64,7 @@ export type NasdaqYoYResponse = {
   methodology: string;
   points: NasdaqYoYPoint[];
   ytdPoints: NasdaqYtdPoint[];
+  fearGreed: FearGreedSeries;
   stats: {
     latestClose: number;
     latestYoyPct: number;
