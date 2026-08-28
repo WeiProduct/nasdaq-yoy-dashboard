@@ -34,6 +34,7 @@ import {
   buildFearGreedHighlightRegion,
   fearGreedZoneForScore,
   findFearGreedHighlightRun,
+  resolveFearGreedHighlightZone,
 } from "@/lib/fear-greed-distribution";
 
 type ChartPoint = NasdaqYoYPoint & {
@@ -499,9 +500,13 @@ export function RollingYoYChart({
   const hoveredFearGreedZone = hoveredFearGreed
     ? fearGreedZoneForScore(hoveredFearGreed.score)
     : null;
-  const highlightedSentimentZone = hoveredFearGreedZone === "neutral"
-    ? null
-    : hoveredFearGreedZone;
+  const highlightedSentimentZone = chart
+    ? resolveFearGreedHighlightZone(
+        hoveredFearGreedZone,
+        hoveredPointerY,
+        chart.fearGreedYScale(25),
+      )
+    : null;
   const sentimentZoneRun = hoveredFearGreed && highlightedSentimentZone
     ? findFearGreedHighlightRun(fearGreedPoints, hoveredFearGreed.date, highlightedSentimentZone)
     : null;

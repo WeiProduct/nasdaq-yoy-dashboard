@@ -64,6 +64,23 @@ export function fearGreedZoneForScore(score: number): FearGreedZoneKey | null {
   return FEAR_GREED_ZONES.find((zone) => score >= zone.min && score <= zone.max)?.key ?? null;
 }
 
+export function resolveFearGreedHighlightZone(
+  dataZone: FearGreedZoneKey | null,
+  pointerY: number | null,
+  extremeFearThresholdY: number,
+): FearGreedDirectionalZone | null {
+  if (!dataZone || dataZone === "neutral") return null;
+  if (
+    dataZone === "extreme-fear"
+    && pointerY !== null
+    && Number.isFinite(pointerY)
+    && pointerY < extremeFearThresholdY
+  ) {
+    return "fear";
+  }
+  return dataZone;
+}
+
 export function summarizeFearGreedDistribution(
   points: FearGreedPoint[],
 ): FearGreedDistribution {

@@ -4,6 +4,7 @@ import {
   fearGreedZoneForScore,
   findFearGreedHighlightRun,
   findFearGreedZoneRun,
+  resolveFearGreedHighlightZone,
   summarizeFearGreedDistribution,
 } from "@/lib/fear-greed-distribution";
 import type { FearGreedPoint } from "@/lib/types";
@@ -30,6 +31,24 @@ describe("fearGreedZoneForScore", () => {
     expect(fearGreedZoneForScore(-1)).toBeNull();
     expect(fearGreedZoneForScore(101)).toBeNull();
     expect(fearGreedZoneForScore(Number.NaN)).toBeNull();
+  });
+});
+
+describe("resolveFearGreedHighlightZone", () => {
+  it("expands an extreme-fear date to the full fear cycle above the 25 line", () => {
+    expect(resolveFearGreedHighlightZone("extreme-fear", 120, 180)).toBe("fear");
+  });
+
+  it("keeps the extreme-fear subrange on or below the 25 line", () => {
+    expect(resolveFearGreedHighlightZone("extreme-fear", 180, 180)).toBe("extreme-fear");
+    expect(resolveFearGreedHighlightZone("extreme-fear", 220, 180)).toBe("extreme-fear");
+    expect(resolveFearGreedHighlightZone("extreme-fear", null, 180)).toBe("extreme-fear");
+  });
+
+  it("does not change the other sentiment zones", () => {
+    expect(resolveFearGreedHighlightZone("fear", 120, 180)).toBe("fear");
+    expect(resolveFearGreedHighlightZone("greed", 220, 180)).toBe("greed");
+    expect(resolveFearGreedHighlightZone("neutral", 120, 180)).toBeNull();
   });
 });
 
