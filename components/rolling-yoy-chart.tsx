@@ -88,13 +88,6 @@ const shortDateFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "UTC",
 });
 
-const rangeBoundaryDateFormatter = new Intl.DateTimeFormat("zh-CN", {
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
 const numberFormatter = new Intl.NumberFormat("zh-CN", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -535,8 +528,8 @@ export function RollingYoYChart({
           startHasCrossing: region.startHasCrossing,
           endHasCrossing: region.endHasCrossing,
           labelY: highlightedSentimentZone.endsWith("fear") ? baselineY - 9 : baselineY + 17,
-          startLabel: rangeBoundaryDateFormatter.format(new Date(region.startTimestamp)),
-          endLabel: rangeBoundaryDateFormatter.format(new Date(region.endTimestamp)),
+          startLabel: shortDateFormatter.format(new Date(region.startTimestamp)),
+          endLabel: shortDateFormatter.format(new Date(region.endTimestamp)),
         };
       })()
     : null;
@@ -786,22 +779,26 @@ export function RollingYoYChart({
                     r="4"
                   />
                 ) : null}
-                <text
-                  className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
-                  x={sentimentZoneHighlight.startX + 7}
-                  y={sentimentZoneHighlight.labelY}
-                  textAnchor="start"
-                >
-                  {sentimentZoneHighlight.startHasCrossing ? "开始" : "区间起点"} {sentimentZoneHighlight.startLabel}
-                </text>
-                <text
-                  className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
-                  x={sentimentZoneHighlight.endX - 7}
-                  y={sentimentZoneHighlight.labelY}
-                  textAnchor="end"
-                >
-                  {sentimentZoneHighlight.endHasCrossing ? "结束" : "持续至今"} {sentimentZoneHighlight.endLabel}
-                </text>
+                {sentimentZoneHighlight.startHasCrossing ? (
+                  <text
+                    className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
+                    x={sentimentZoneHighlight.startX + 7}
+                    y={sentimentZoneHighlight.labelY}
+                    textAnchor="start"
+                  >
+                    {sentimentZoneHighlight.startLabel}
+                  </text>
+                ) : null}
+                {sentimentZoneHighlight.endHasCrossing ? (
+                  <text
+                    className={`sentiment-zone-label ${sentimentZoneHighlight.zone}`}
+                    x={sentimentZoneHighlight.endX - 7}
+                    y={sentimentZoneHighlight.labelY}
+                    textAnchor="end"
+                  >
+                    {sentimentZoneHighlight.endLabel}
+                  </text>
+                ) : null}
               </g>
             ) : null}
             {chart.linePath ? (

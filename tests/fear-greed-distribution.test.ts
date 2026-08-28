@@ -156,6 +156,13 @@ describe("findFearGreedZoneRun", () => {
     expect(region?.threshold).toBe(45);
     expect(region?.points[0].score).toBe(45);
     expect(region?.points.at(-1)?.score).toBe(45);
+
+    const extremeRun = findFearGreedHighlightRun(
+      fearCycle,
+      "2026-04-03",
+      "extreme-fear",
+    );
+    expect(extremeRun).toMatchObject({ startIndex: 2, endIndex: 2 });
   });
 
   it("highlights the complete greed cycle against the 55 boundary", () => {
