@@ -88,4 +88,22 @@ describe("findFearGreedZoneRun", () => {
     expect(findFearGreedZoneRun(points, "2026-01-01", "extreme-greed")).toBeNull();
     expect(findFearGreedZoneRun(points, "2026-02-01", "extreme-greed")).toBeNull();
   });
+
+  it("supports the matching extreme-fear region", () => {
+    const fearPoints: FearGreedPoint[] = [
+      { date: "2026-03-24", score: 30, rating: "fear" },
+      { date: "2026-03-25", score: 18, rating: "extreme fear" },
+      { date: "2026-03-26", score: 10, rating: "extreme fear" },
+      { date: "2026-03-27", score: 20, rating: "extreme fear" },
+      { date: "2026-03-28", score: 28, rating: "fear" },
+    ];
+
+    expect(findFearGreedZoneRun(fearPoints, "2026-03-26", "extreme-fear")).toEqual({
+      zone: "extreme-fear",
+      startDate: "2026-03-25",
+      endDate: "2026-03-27",
+      startIndex: 1,
+      endIndex: 3,
+    });
+  });
 });
