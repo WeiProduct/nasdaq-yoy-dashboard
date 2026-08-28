@@ -698,6 +698,22 @@ h1 {
   fill: var(--negative);
 }
 
+.ytd-fill {
+  fill: var(--ytd);
+}
+
+.index-fill {
+  fill: var(--index);
+}
+
+.moving-average-fill {
+  fill: var(--moving-average);
+}
+
+.fear-greed-fill {
+  fill: var(--fear-greed);
+}
+
 .tooltip-detail {
   fill: #455149;
   font-size: 10px;

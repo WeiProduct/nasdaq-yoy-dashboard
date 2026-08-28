@@ -23,7 +23,10 @@ import type {
   NasdaqMovingAveragePoint,
   NasdaqYoYPoint,
 } from "@/lib/types";
-import { mapClientXToRange } from "@/lib/chart-coordinates";
+import {
+  mapClientXToRange,
+  selectFirstSeriesBelowPointer,
+} from "@/lib/chart-coordinates";
 import type { YtdPoint } from "@/lib/ytd";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
 
@@ -45,6 +48,19 @@ type FearGreedChartPoint = FearGreedPoint & {
 type MovingAverageChartPoint = NasdaqMovingAveragePoint & {
   timestamp: number;
   dateValue: Date;
+};
+
+type HoverSeriesKey = "yoy" | "ytd" | "index" | "moving-average" | "fear-greed";
+
+type HoverSeries = {
+  key: HoverSeriesKey;
+  x: number;
+  y: number;
+  valueText: string;
+  ariaText: string;
+  textClassName: string;
+  dotClassName?: string;
+  dotFill?: string;
 };
 
 const fullDateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -136,6 +152,7 @@ export function RollingYoYChart({
 }: RollingYoYChartProps) {
   const { ref: containerRef, width } = useContainerWidth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [hoveredPointerY, setHoveredPointerY] = useState<number | null>(null);
   const gradientId = useId().replaceAll(":", "");
 
   const points = useMemo<ChartPoint[]>(
@@ -354,7 +371,16 @@ export function RollingYoYChart({
 
   function handlePointerMove(event: PointerEvent<SVGRectElement>) {
     const nextIndex = indexFromClientX(event.clientX, event.currentTarget);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const nextPointerY = mapClientXToRange(
+      event.clientY,
+      bounds.top,
+      bounds.height,
+      margin.top,
+      height - margin.bottom,
+    );
     setHoveredIndex((current) => (current === nextIndex ? current : nextIndex));
+    setHoveredPointerY((current) => current === nextPointerY ? current : nextPointerY);
   }
 
   function handlePointerDown(event: PointerEvent<SVGRectElement>) {
@@ -373,6 +399,7 @@ export function RollingYoYChart({
     else return;
 
     event.preventDefault();
+    setHoveredPointerY(null);
     setHoveredIndex(next);
   }
 
@@ -393,23 +420,72 @@ export function RollingYoYChart({
     : 0;
   const hoveredFearGreedX = hoveredFearGreed && chart ? chart.xScale(hoveredFearGreed.dateValue) : 0;
   const hoveredFearGreedY = hoveredFearGreed && chart ? chart.fearGreedYScale(hoveredFearGreed.score) : 0;
-  const hasPercentValue = showYoY || Boolean(hoveredYtd);
-  const hasPriceValue = showYoY || showIndex;
-  let nextTooltipRowY = hasPercentValue ? 62 : 43;
-  const priceTooltipY = hasPriceValue ? nextTooltipRowY : null;
-  if (hasPriceValue) nextTooltipRowY += 20;
-  const movingAverageTooltipY = hoveredMovingAverage ? nextTooltipRowY : null;
-  if (hoveredMovingAverage) nextTooltipRowY += 20;
-  const fearGreedTooltipY = hoveredFearGreed ? nextTooltipRowY : null;
-  if (hoveredFearGreed) nextTooltipRowY += 20;
-  const tooltipWidth = width < 620 ? 238 : 270;
-  const tooltipHeight = Math.max(
-    36,
-    hasPercentValue ? 55 : 0,
-    priceTooltipY ? priceTooltipY + 11 : 0,
-    movingAverageTooltipY ? movingAverageTooltipY + 11 : 0,
-    fearGreedTooltipY ? fearGreedTooltipY + 11 : 0,
+  const hoverSeriesCandidates: HoverSeries[] = [];
+
+  if (hovered && chart && showYoY) {
+    hoverSeriesCandidates.push({
+      key: "yoy",
+      x: hoveredX,
+      y: hoveredY,
+      valueText: `同比 ${percent(hovered.yoyPct)}`,
+      ariaText: `同比 ${percent(hovered.yoyPct)}`,
+      textClassName: hovered.yoyPct >= 0
+        ? "tooltip-value positive-fill"
+        : "tooltip-value negative-fill",
+      dotFill: hovered.yoyPct >= 0 ? "var(--positive)" : "var(--negative)",
+    });
+  }
+  if (hoveredYtd) {
+    hoverSeriesCandidates.push({
+      key: "ytd",
+      x: hoveredX,
+      y: hoveredYtdY,
+      valueText: `YTD ${percent(hoveredYtd.ytdPct)}`,
+      ariaText: `年初至今 ${percent(hoveredYtd.ytdPct)}`,
+      textClassName: "tooltip-value ytd-fill",
+      dotClassName: "ytd-hover-dot",
+    });
+  }
+  if (hovered && chart && showIndex) {
+    hoverSeriesCandidates.push({
+      key: "index",
+      x: hoveredX,
+      y: hoveredIndexY,
+      valueText: `指数 ${numberFormatter.format(hovered.close)}`,
+      ariaText: `指数收盘 ${numberFormatter.format(hovered.close)}`,
+      textClassName: "tooltip-value index-fill",
+      dotClassName: "index-hover-dot",
+    });
+  }
+  if (hoveredMovingAverage) {
+    hoverSeriesCandidates.push({
+      key: "moving-average",
+      x: hoveredX,
+      y: hoveredMovingAverageY,
+      valueText: `SMA125 ${numberFormatter.format(hoveredMovingAverage.value)}`,
+      ariaText: `125 日均线 ${numberFormatter.format(hoveredMovingAverage.value)}`,
+      textClassName: "tooltip-value moving-average-fill",
+      dotClassName: "moving-average-hover-dot",
+    });
+  }
+  if (hoveredFearGreed) {
+    hoverSeriesCandidates.push({
+      key: "fear-greed",
+      x: hoveredFearGreedX,
+      y: hoveredFearGreedY,
+      valueText: `CNN 情绪 ${hoveredFearGreed.score.toFixed(0)} · ${fearGreedRatingLabel(hoveredFearGreed.rating)}`,
+      ariaText: `CNN 恐惧与贪婪指数 ${hoveredFearGreed.score.toFixed(0)}，${fearGreedRatingLabel(hoveredFearGreed.rating)}`,
+      textClassName: "tooltip-value fear-greed-fill",
+      dotClassName: "fear-greed-hover-dot",
+    });
+  }
+
+  const selectedHoverSeries = selectFirstSeriesBelowPointer(
+    hoverSeriesCandidates,
+    hoveredPointerY,
   );
+  const tooltipWidth = width < 620 ? 218 : 240;
+  const tooltipHeight = 55;
   const tooltipX = Math.max(
     4,
     Math.min(
@@ -426,7 +502,7 @@ export function RollingYoYChart({
   const activeFearGreed = showFearGreed && fearGreedPoints.length > 0
     ? fearGreedPoints[nearestFearGreedIndex(fearGreedPoints, activePoint.timestamp)]
     : undefined;
-  const ariaValues = [
+  const defaultAriaValue = [
     showYoY ? `同比 ${percent(activePoint.yoyPct)}` : null,
     activeYtd ? `年初至今 ${percent(activeYtd.ytdPct)}` : null,
     showIndex ? `指数收盘 ${numberFormatter.format(activePoint.close)}` : null,
@@ -436,7 +512,8 @@ export function RollingYoYChart({
     activeFearGreed
       ? `CNN 恐惧与贪婪指数 ${activeFearGreed.score.toFixed(0)}，${fearGreedRatingLabel(activeFearGreed.rating)}`
       : null,
-  ].filter(Boolean).join("，");
+  ].find(Boolean);
+  const activeAriaValue = selectedHoverSeries?.ariaText ?? defaultAriaValue;
 
   return (
     <div
@@ -448,9 +525,12 @@ export function RollingYoYChart({
       aria-valuemin={0}
       aria-valuemax={points.length - 1}
       aria-valuenow={hoveredIndex ?? points.length - 1}
-      aria-valuetext={`${fullDateFormatter.format(activePoint.dateValue)}${ariaValues ? `，${ariaValues}` : ""}`}
+      aria-valuetext={`${fullDateFormatter.format(activePoint.dateValue)}${activeAriaValue ? `，${activeAriaValue}` : ""}`}
       onFocus={() => setHoveredIndex((current) => current ?? points.length - 1)}
-      onBlur={() => setHoveredIndex(null)}
+      onBlur={() => {
+        setHoveredIndex(null);
+        setHoveredPointerY(null);
+      }}
       onKeyDown={handleKeyboard}
     >
       {width > 0 && chart ? (
@@ -645,11 +725,14 @@ export function RollingYoYChart({
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerLeave={(event) => {
-              if (event.pointerType === "mouse") setHoveredIndex(null);
+              if (event.pointerType === "mouse") {
+                setHoveredIndex(null);
+                setHoveredPointerY(null);
+              }
             }}
           />
 
-          {hovered ? (
+          {hovered && selectedHoverSeries ? (
             <g className="hover-layer" aria-hidden="true" pointerEvents="none">
               <line
                 className="crosshair-line"
@@ -658,115 +741,27 @@ export function RollingYoYChart({
                 y1={margin.top}
                 y2={height - margin.bottom}
               />
-              {showYoY ? (
-                <>
-                  <circle
-                    className="hover-dot-ring"
-                    cx={hoveredX}
-                    cy={hoveredY}
-                    r="7"
-                    fill={hovered.yoyPct >= 0 ? "var(--positive)" : "var(--negative)"}
-                  />
-                  <circle cx={hoveredX} cy={hoveredY} r="3" fill="white" />
-                </>
-              ) : null}
-              {hoveredYtd ? (
-                <>
-                  <circle
-                    className="hover-dot-ring ytd-hover-dot"
-                    cx={hoveredX}
-                    cy={hoveredYtdY}
-                    r="7"
-                  />
-                  <circle cx={hoveredX} cy={hoveredYtdY} r="3" fill="white" />
-                </>
-              ) : null}
-              {showIndex ? (
-                <>
-                  <circle
-                    className="hover-dot-ring index-hover-dot"
-                    cx={hoveredX}
-                    cy={hoveredIndexY}
-                    r="7"
-                  />
-                  <circle cx={hoveredX} cy={hoveredIndexY} r="3" fill="white" />
-                </>
-              ) : null}
-              {hoveredMovingAverage ? (
-                <>
-                  <circle
-                    className="hover-dot-ring moving-average-hover-dot"
-                    cx={hoveredX}
-                    cy={hoveredMovingAverageY}
-                    r="7"
-                  />
-                  <circle cx={hoveredX} cy={hoveredMovingAverageY} r="3" fill="white" />
-                </>
-              ) : null}
-              {hoveredFearGreed ? (
-                <>
-                  <circle
-                    className="hover-dot-ring fear-greed-hover-dot"
-                    cx={hoveredFearGreedX}
-                    cy={hoveredFearGreedY}
-                    r="7"
-                  />
-                  <circle cx={hoveredFearGreedX} cy={hoveredFearGreedY} r="3" fill="white" />
-                </>
-              ) : null}
+              <circle
+                className={`hover-dot-ring${selectedHoverSeries.dotClassName ? ` ${selectedHoverSeries.dotClassName}` : ""}`}
+                cx={selectedHoverSeries.x}
+                cy={selectedHoverSeries.y}
+                r="7"
+                fill={selectedHoverSeries.dotFill}
+              />
+              <circle
+                cx={selectedHoverSeries.x}
+                cy={selectedHoverSeries.y}
+                r="3"
+                fill="white"
+              />
               <g transform={`translate(${tooltipX}, ${tooltipY})`} filter={`url(#${gradientId}-shadow)`}>
                 <rect className="tooltip-box" width={tooltipWidth} height={tooltipHeight} rx="12" />
                 <text className="tooltip-date" x="14" y="20">
                   {fullDateFormatter.format(hovered.dateValue)}
                 </text>
-                {showYoY ? (
-                  <text
-                    className={hovered.yoyPct >= 0 ? "tooltip-value positive-fill" : "tooltip-value negative-fill"}
-                    x="14"
-                    y="45"
-                  >
-                    同比 {percent(hovered.yoyPct)}
-                  </text>
-                ) : null}
-                {hoveredYtd ? (
-                  <text
-                    className="tooltip-ytd-value"
-                    x={showYoY ? tooltipWidth - 14 : 14}
-                    y="45"
-                    textAnchor={showYoY ? "end" : "start"}
-                  >
-                    YTD {percent(hoveredYtd.ytdPct)}
-                  </text>
-                ) : null}
-                {hasPriceValue ? (
-                  <text
-                    className="tooltip-detail"
-                    x="14"
-                    y={priceTooltipY ?? undefined}
-                  >
-                    {showYoY
-                      ? `今年 ${numberFormatter.format(hovered.close)} · 去年 ${numberFormatter.format(hovered.comparisonClose)}`
-                      : `指数 ${numberFormatter.format(hovered.close)}`}
-                  </text>
-                ) : null}
-                {hoveredMovingAverage ? (
-                  <text
-                    className="tooltip-moving-average-value"
-                    x="14"
-                    y={movingAverageTooltipY ?? undefined}
-                  >
-                    SMA125 {numberFormatter.format(hoveredMovingAverage.value)}
-                  </text>
-                ) : null}
-                {hoveredFearGreed ? (
-                  <text
-                    className="tooltip-fear-greed-value"
-                    x="14"
-                    y={fearGreedTooltipY ?? undefined}
-                  >
-                    CNN 情绪 {hoveredFearGreed.score.toFixed(0)} · {fearGreedRatingLabel(hoveredFearGreed.rating)}
-                  </text>
-                ) : null}
+                <text className={selectedHoverSeries.textClassName} x="14" y="45">
+                  {selectedHoverSeries.valueText}
+                </text>
               </g>
             </g>
           ) : null}

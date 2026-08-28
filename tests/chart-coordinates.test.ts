@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapClientXToRange } from "../lib/chart-coordinates";
+import {
+  mapClientXToRange,
+  selectFirstSeriesBelowPointer,
+} from "../lib/chart-coordinates";
 
 describe("mapClientXToRange", () => {
   it("maps the interaction layer edges and midpoint to the chart range", () => {
@@ -15,5 +18,28 @@ describe("mapClientXToRange", () => {
 
   it("falls back to the range start for a collapsed interaction layer", () => {
     expect(mapClientXToRange(100, 100, 0, 16, 936)).toBe(16);
+  });
+});
+
+describe("selectFirstSeriesBelowPointer", () => {
+  const candidates = [
+    { key: "top", y: 80 },
+    { key: "middle", y: 160 },
+    { key: "bottom", y: 240 },
+  ];
+
+  it("selects the first visible line vertically below the pointer", () => {
+    expect(selectFirstSeriesBelowPointer(candidates, 100)?.key).toBe("middle");
+    expect(selectFirstSeriesBelowPointer(candidates, 161)?.key).toBe("middle");
+    expect(selectFirstSeriesBelowPointer(candidates, 164)?.key).toBe("bottom");
+  });
+
+  it("falls back to the nearest line when the pointer is below every line", () => {
+    expect(selectFirstSeriesBelowPointer(candidates, 300)?.key).toBe("bottom");
+  });
+
+  it("uses visual-series order for keyboard navigation and empty ties", () => {
+    expect(selectFirstSeriesBelowPointer(candidates, null)?.key).toBe("top");
+    expect(selectFirstSeriesBelowPointer([], 100)).toBeUndefined();
   });
 });
