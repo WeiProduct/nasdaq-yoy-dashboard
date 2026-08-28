@@ -29,6 +29,10 @@ import {
 } from "@/lib/chart-coordinates";
 import type { YtdPoint } from "@/lib/ytd";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
+import {
+  fearGreedZoneForScore,
+  findFearGreedZoneRun,
+} from "@/lib/fear-greed-distribution";
 
 type ChartPoint = NasdaqYoYPoint & {
   timestamp: number;
@@ -77,6 +81,13 @@ const monthFormatter = new Intl.DateTimeFormat("zh-CN", {
 });
 
 const shortDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  month: "numeric",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+const rangeBoundaryDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  year: "numeric",
   month: "numeric",
   day: "numeric",
   timeZone: "UTC",
@@ -486,6 +497,36 @@ export function RollingYoYChart({
     hoverSeriesCandidates,
     hoveredPointerY,
   );
+  const extremeGreedRun = selectedHoverSeries?.key === "fear-greed"
+    && hoveredFearGreed
+    && fearGreedZoneForScore(hoveredFearGreed.score) === "extreme-greed"
+    ? findFearGreedZoneRun(fearGreedPoints, hoveredFearGreed.date, "extreme-greed")
+    : null;
+  const extremeGreedHighlight = extremeGreedRun && chart
+    ? (() => {
+        const startPoint = fearGreedPoints[extremeGreedRun.startIndex];
+        const endPoint = fearGreedPoints[extremeGreedRun.endIndex];
+        const previousPoint = fearGreedPoints[extremeGreedRun.startIndex - 1];
+        const nextPoint = fearGreedPoints[extremeGreedRun.endIndex + 1];
+        const startX = chart.xScale(startPoint.dateValue);
+        const endX = chart.xScale(endPoint.dateValue);
+        const left = previousPoint
+          ? (chart.xScale(previousPoint.dateValue) + startX) / 2
+          : margin.left;
+        const right = nextPoint
+          ? (endX + chart.xScale(nextPoint.dateValue)) / 2
+          : width - margin.right;
+
+        return {
+          left: Math.max(margin.left, left),
+          right: Math.min(width - margin.right, right),
+          top: chart.fearGreedYScale(100),
+          bottom: chart.fearGreedYScale(75),
+          startLabel: rangeBoundaryDateFormatter.format(startPoint.dateValue),
+          endLabel: rangeBoundaryDateFormatter.format(endPoint.dateValue),
+        };
+      })()
+    : null;
   const tooltipWidth = width < 620 ? 218 : 240;
   const tooltipHeight = selectedHoverSeries?.detailText ? 72 : 55;
   const tooltipX = Math.max(
@@ -693,6 +734,39 @@ export function RollingYoYChart({
 
             {chart.areaPath ? (
               <path className="area-path" d={chart.areaPath} fill={`url(#${gradientId}-area)`} />
+            ) : null}
+            {extremeGreedHighlight ? (
+              <g className="extreme-greed-highlight">
+                <rect
+                  className="extreme-greed-zone-fill"
+                  x={extremeGreedHighlight.left}
+                  y={extremeGreedHighlight.top}
+                  width={Math.max(1, extremeGreedHighlight.right - extremeGreedHighlight.left)}
+                  height={extremeGreedHighlight.bottom - extremeGreedHighlight.top}
+                />
+                <line
+                  className="extreme-greed-zone-boundary"
+                  x1={extremeGreedHighlight.left}
+                  x2={extremeGreedHighlight.left}
+                  y1={extremeGreedHighlight.top}
+                  y2={extremeGreedHighlight.bottom}
+                />
+                <line
+                  className="extreme-greed-zone-boundary"
+                  x1={extremeGreedHighlight.right}
+                  x2={extremeGreedHighlight.right}
+                  y1={extremeGreedHighlight.top}
+                  y2={extremeGreedHighlight.bottom}
+                />
+                <text
+                  className="extreme-greed-zone-label"
+                  x={(extremeGreedHighlight.left + extremeGreedHighlight.right) / 2}
+                  y={extremeGreedHighlight.bottom - 9}
+                  textAnchor="middle"
+                >
+                  极度贪婪 76–100 · 开始 {extremeGreedHighlight.startLabel} → 结束 {extremeGreedHighlight.endLabel}
+                </text>
+              </g>
             ) : null}
             {chart.linePath ? (
               <path

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fearGreedZoneForScore,
+  findFearGreedZoneRun,
   summarizeFearGreedDistribution,
 } from "@/lib/fear-greed-distribution";
 import type { FearGreedPoint } from "@/lib/types";
@@ -61,5 +62,30 @@ describe("summarizeFearGreedDistribution", () => {
     const result = summarizeFearGreedDistribution([]);
     expect(result.total).toBe(0);
     expect(result.zones.every((zone) => zone.percentage === 0)).toBe(true);
+  });
+});
+
+describe("findFearGreedZoneRun", () => {
+  const points: FearGreedPoint[] = [
+    { date: "2026-01-01", score: 70, rating: "greed" },
+    { date: "2026-01-02", score: 76, rating: "extreme greed" },
+    { date: "2026-01-03", score: 88, rating: "extreme greed" },
+    { date: "2026-01-04", score: 100, rating: "extreme greed" },
+    { date: "2026-01-05", score: 55, rating: "neutral" },
+  ];
+
+  it("returns the complete contiguous region containing the hovered date", () => {
+    expect(findFearGreedZoneRun(points, "2026-01-03", "extreme-greed")).toEqual({
+      zone: "extreme-greed",
+      startDate: "2026-01-02",
+      endDate: "2026-01-04",
+      startIndex: 1,
+      endIndex: 3,
+    });
+  });
+
+  it("returns null when the hovered date is outside the requested region", () => {
+    expect(findFearGreedZoneRun(points, "2026-01-01", "extreme-greed")).toBeNull();
+    expect(findFearGreedZoneRun(points, "2026-02-01", "extreme-greed")).toBeNull();
   });
 });

@@ -24,6 +24,14 @@ export type FearGreedDistribution = {
   zones: FearGreedZoneShare[];
 };
 
+export type FearGreedZoneRun = {
+  zone: FearGreedZoneKey;
+  startDate: string;
+  endDate: string;
+  startIndex: number;
+  endIndex: number;
+};
+
 export function fearGreedZoneForScore(score: number): FearGreedZoneKey | null {
   if (!Number.isFinite(score) || score < 0 || score > 100) return null;
   return FEAR_GREED_ZONES.find((zone) => score >= zone.min && score <= zone.max)?.key ?? null;
@@ -51,5 +59,41 @@ export function summarizeFearGreedDistribution(
       count: counts.get(zone.key) ?? 0,
       percentage: total === 0 ? 0 : ((counts.get(zone.key) ?? 0) / total) * 100,
     })),
+  };
+}
+
+export function findFearGreedZoneRun(
+  points: FearGreedPoint[],
+  targetDate: string,
+  zone: FearGreedZoneKey,
+): FearGreedZoneRun | null {
+  const targetIndex = points.findIndex((point) => point.date === targetDate);
+  if (targetIndex < 0 || fearGreedZoneForScore(points[targetIndex].score) !== zone) {
+    return null;
+  }
+
+  let startIndex = targetIndex;
+  let endIndex = targetIndex;
+
+  while (
+    startIndex > 0
+    && fearGreedZoneForScore(points[startIndex - 1].score) === zone
+  ) {
+    startIndex -= 1;
+  }
+
+  while (
+    endIndex < points.length - 1
+    && fearGreedZoneForScore(points[endIndex + 1].score) === zone
+  ) {
+    endIndex += 1;
+  }
+
+  return {
+    zone,
+    startDate: points[startIndex].date,
+    endDate: points[endIndex].date,
+    startIndex,
+    endIndex,
   };
 }
