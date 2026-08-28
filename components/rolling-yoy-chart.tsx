@@ -31,6 +31,7 @@ import {
 import type { YtdPoint } from "@/lib/ytd";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
 import {
+  buildFearGreedExtremeRegion,
   fearGreedZoneForScore,
   findFearGreedZoneRun,
 } from "@/lib/fear-greed-distribution";
@@ -514,27 +515,26 @@ export function RollingYoYChart({
     : null;
   const extremeZoneHighlight = extremeZoneRun && chart && highlightedExtremeZone
     ? (() => {
-        const startPoint = fearGreedPoints[extremeZoneRun.startIndex];
-        const endPoint = fearGreedPoints[extremeZoneRun.endIndex];
-        const previousPoint = fearGreedPoints[extremeZoneRun.startIndex - 1];
-        const nextPoint = fearGreedPoints[extremeZoneRun.endIndex + 1];
-        const startX = chart.xScale(startPoint.dateValue);
-        const endX = chart.xScale(endPoint.dateValue);
-        const left = previousPoint
-          ? (chart.xScale(previousPoint.dateValue) + startX) / 2
-          : margin.left;
-        const right = nextPoint
-          ? (endX + chart.xScale(nextPoint.dateValue)) / 2
-          : width - margin.right;
+        const region = buildFearGreedExtremeRegion(fearGreedPoints, extremeZoneRun);
+        if (!region) return null;
+        const baselineY = chart.fearGreedYScale(region.threshold);
+        const fillPath = area<(typeof region.points)[number]>()
+          .x((point) => chart.xScale(new Date(point.timestamp)))
+          .y0(baselineY)
+          .y1((point) => chart.fearGreedYScale(point.score))
+          .curve(curveLinear)(region.points);
+        const startX = chart.xScale(new Date(region.startTimestamp));
+        const endX = chart.xScale(new Date(region.endTimestamp));
 
         return {
           zone: highlightedExtremeZone,
-          left: Math.max(margin.left, left),
-          right: Math.min(width - margin.right, right),
-          top: chart.fearGreedYScale(highlightedExtremeZone === "extreme-greed" ? 100 : 25),
-          bottom: chart.fearGreedYScale(highlightedExtremeZone === "extreme-greed" ? 75 : 0),
-          startLabel: rangeBoundaryDateFormatter.format(startPoint.dateValue),
-          endLabel: rangeBoundaryDateFormatter.format(endPoint.dateValue),
+          fillPath,
+          baselineY,
+          startX,
+          endX,
+          labelY: highlightedExtremeZone === "extreme-fear" ? baselineY - 9 : baselineY + 17,
+          startLabel: rangeBoundaryDateFormatter.format(new Date(region.startTimestamp)),
+          endLabel: rangeBoundaryDateFormatter.format(new Date(region.endTimestamp)),
         };
       })()
     : null;
@@ -748,39 +748,34 @@ export function RollingYoYChart({
             ) : null}
             {extremeZoneHighlight ? (
               <g className={`extreme-zone-highlight ${extremeZoneHighlight.zone}`}>
-                <rect
+                <path
                   className={`extreme-zone-fill ${extremeZoneHighlight.zone}`}
-                  x={extremeZoneHighlight.left}
-                  y={extremeZoneHighlight.top}
-                  width={Math.max(1, extremeZoneHighlight.right - extremeZoneHighlight.left)}
-                  height={extremeZoneHighlight.bottom - extremeZoneHighlight.top}
+                  d={extremeZoneHighlight.fillPath ?? undefined}
                 />
-                <line
+                <circle
                   className={`extreme-zone-boundary ${extremeZoneHighlight.zone}`}
-                  x1={extremeZoneHighlight.left}
-                  x2={extremeZoneHighlight.left}
-                  y1={extremeZoneHighlight.top}
-                  y2={extremeZoneHighlight.bottom}
+                  cx={extremeZoneHighlight.startX}
+                  cy={extremeZoneHighlight.baselineY}
+                  r="4"
                 />
-                <line
+                <circle
                   className={`extreme-zone-boundary ${extremeZoneHighlight.zone}`}
-                  x1={extremeZoneHighlight.right}
-                  x2={extremeZoneHighlight.right}
-                  y1={extremeZoneHighlight.top}
-                  y2={extremeZoneHighlight.bottom}
+                  cx={extremeZoneHighlight.endX}
+                  cy={extremeZoneHighlight.baselineY}
+                  r="4"
                 />
                 <text
                   className={`extreme-zone-label ${extremeZoneHighlight.zone}`}
-                  x={extremeZoneHighlight.left + 6}
-                  y={extremeZoneHighlight.top + 14}
+                  x={extremeZoneHighlight.startX + 7}
+                  y={extremeZoneHighlight.labelY}
                   textAnchor="start"
                 >
                   开始 {extremeZoneHighlight.startLabel}
                 </text>
                 <text
                   className={`extreme-zone-label ${extremeZoneHighlight.zone}`}
-                  x={extremeZoneHighlight.right - 6}
-                  y={extremeZoneHighlight.bottom - 8}
+                  x={extremeZoneHighlight.endX - 7}
+                  y={extremeZoneHighlight.labelY}
                   textAnchor="end"
                 >
                   结束 {extremeZoneHighlight.endLabel}

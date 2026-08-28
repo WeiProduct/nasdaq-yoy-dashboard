@@ -611,7 +611,7 @@ h1 {
 }
 
 .extreme-zone-fill {
-  stroke-width: 1;
+  stroke: none;
 }
 
 .extreme-zone-fill.extreme-greed {
@@ -620,19 +620,18 @@ h1 {
 }
 
 .extreme-zone-fill.extreme-fear {
-  fill: color-mix(in srgb, var(--extreme-fear) 24%, transparent);
-  stroke: color-mix(in srgb, var(--extreme-fear) 62%, transparent);
+  fill: color-mix(in srgb, var(--fear-greed) 28%, transparent);
 }
 
 .extreme-zone-boundary {
-  stroke: var(--extreme-greed);
-  stroke-width: 1.2;
-  stroke-dasharray: 3 3;
+  fill: var(--extreme-greed);
+  stroke: rgba(255, 255, 253, 0.96);
+  stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
 .extreme-zone-boundary.extreme-fear {
-  stroke: var(--extreme-fear);
+  fill: var(--fear-greed);
 }
 
 .extreme-zone-label {
@@ -646,7 +645,7 @@ h1 {
 }
 
 .extreme-zone-label.extreme-fear {
-  fill: #8f1239;
+  fill: var(--fear-greed);
 }
 
 .index-axis-tick {

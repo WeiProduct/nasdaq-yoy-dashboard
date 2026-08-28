@@ -32,6 +32,19 @@ export type FearGreedZoneRun = {
   endIndex: number;
 };
 
+export type FearGreedExtremeRegionPoint = {
+  timestamp: number;
+  score: number;
+};
+
+export type FearGreedExtremeRegion = {
+  zone: "extreme-fear" | "extreme-greed";
+  threshold: number;
+  points: FearGreedExtremeRegionPoint[];
+  startTimestamp: number;
+  endTimestamp: number;
+};
+
 export function fearGreedZoneForScore(score: number): FearGreedZoneKey | null {
   if (!Number.isFinite(score) || score < 0 || score > 100) return null;
   return FEAR_GREED_ZONES.find((zone) => score >= zone.min && score <= zone.max)?.key ?? null;
@@ -95,5 +108,58 @@ export function findFearGreedZoneRun(
     endDate: points[endIndex].date,
     startIndex,
     endIndex,
+  };
+}
+
+function interpolateThresholdCrossing(
+  from: FearGreedPoint,
+  to: FearGreedPoint,
+  threshold: number,
+): FearGreedExtremeRegionPoint {
+  const fromTimestamp = Date.parse(`${from.date}T00:00:00.000Z`);
+  const toTimestamp = Date.parse(`${to.date}T00:00:00.000Z`);
+  const scoreDelta = to.score - from.score;
+  const ratio = scoreDelta === 0
+    ? 0
+    : Math.max(0, Math.min(1, (threshold - from.score) / scoreDelta));
+
+  return {
+    timestamp: Math.round(fromTimestamp + (toTimestamp - fromTimestamp) * ratio),
+    score: threshold,
+  };
+}
+
+export function buildFearGreedExtremeRegion(
+  points: FearGreedPoint[],
+  run: FearGreedZoneRun,
+): FearGreedExtremeRegion | null {
+  if (run.zone !== "extreme-fear" && run.zone !== "extreme-greed") return null;
+
+  const startPoint = points[run.startIndex];
+  const endPoint = points[run.endIndex];
+  if (!startPoint || !endPoint) return null;
+
+  const threshold = run.zone === "extreme-fear" ? 25 : 75;
+  const previousPoint = points[run.startIndex - 1];
+  const nextPoint = points[run.endIndex + 1];
+  const startBoundary = previousPoint
+    ? interpolateThresholdCrossing(previousPoint, startPoint, threshold)
+    : { timestamp: Date.parse(`${startPoint.date}T00:00:00.000Z`), score: threshold };
+  const endBoundary = nextPoint
+    ? interpolateThresholdCrossing(endPoint, nextPoint, threshold)
+    : { timestamp: Date.parse(`${endPoint.date}T00:00:00.000Z`), score: threshold };
+  const interiorPoints = points
+    .slice(run.startIndex, run.endIndex + 1)
+    .map((point) => ({
+      timestamp: Date.parse(`${point.date}T00:00:00.000Z`),
+      score: point.score,
+    }));
+
+  return {
+    zone: run.zone,
+    threshold,
+    points: [startBoundary, ...interiorPoints, endBoundary],
+    startTimestamp: startBoundary.timestamp,
+    endTimestamp: endBoundary.timestamp,
   };
 }

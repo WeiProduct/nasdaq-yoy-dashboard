@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFearGreedExtremeRegion,
   fearGreedZoneForScore,
   findFearGreedZoneRun,
   summarizeFearGreedDistribution,
@@ -98,12 +99,42 @@ describe("findFearGreedZoneRun", () => {
       { date: "2026-03-28", score: 28, rating: "fear" },
     ];
 
-    expect(findFearGreedZoneRun(fearPoints, "2026-03-26", "extreme-fear")).toEqual({
+    const run = findFearGreedZoneRun(fearPoints, "2026-03-26", "extreme-fear");
+    expect(run).toEqual({
       zone: "extreme-fear",
       startDate: "2026-03-25",
       endDate: "2026-03-27",
       startIndex: 1,
       endIndex: 3,
+    });
+
+    expect(buildFearGreedExtremeRegion(fearPoints, run!)).toEqual({
+      zone: "extreme-fear",
+      threshold: 25,
+      startTimestamp: Date.parse("2026-03-24T10:00:00.000Z"),
+      endTimestamp: Date.parse("2026-03-27T15:00:00.000Z"),
+      points: [
+        { timestamp: Date.parse("2026-03-24T10:00:00.000Z"), score: 25 },
+        { timestamp: Date.parse("2026-03-25T00:00:00.000Z"), score: 18 },
+        { timestamp: Date.parse("2026-03-26T00:00:00.000Z"), score: 10 },
+        { timestamp: Date.parse("2026-03-27T00:00:00.000Z"), score: 20 },
+        { timestamp: Date.parse("2026-03-27T15:00:00.000Z"), score: 25 },
+      ],
+    });
+  });
+
+  it("clips extreme greed to the 75 threshold crossings", () => {
+    const run = findFearGreedZoneRun(points, "2026-01-03", "extreme-greed");
+    const region = buildFearGreedExtremeRegion(points, run!);
+
+    expect(region?.threshold).toBe(75);
+    expect(region?.points[0]).toEqual({
+      timestamp: Date.parse("2026-01-01T20:00:00.000Z"),
+      score: 75,
+    });
+    expect(region?.points.at(-1)).toEqual({
+      timestamp: Date.parse("2026-01-04T13:20:00.000Z"),
+      score: 75,
     });
   });
 });
