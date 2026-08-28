@@ -72,6 +72,7 @@ export type NasdaqYoYResponse = {
   methodology: string;
   points: NasdaqYoYPoint[];
   ytdPoints: NasdaqYtdPoint[];
+  movingAverage50: NasdaqMovingAveragePoint[];
   movingAverage125: NasdaqMovingAveragePoint[];
   fearGreed: FearGreedSeries;
   stats: {

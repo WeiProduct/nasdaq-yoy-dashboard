@@ -193,6 +193,7 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
 
   const latest = points.at(-1)!;
   const ytdPoints = computeYearlyYtd(observations, points[0].date);
+  const movingAverage50 = computeSimpleMovingAverage(observations, 50, points[0].date);
   const movingAverage125 = computeSimpleMovingAverage(observations, 125, points[0].date);
   let highYoyPct = -Infinity;
   let lowYoyPct = Infinity;
@@ -228,9 +229,10 @@ export async function getNasdaqYoYData(): Promise<NasdaqYoYResponse> {
       url: FRED_SERIES_URL,
     },
     methodology:
-      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证，当日未收盘时作为临时收盘输入。同比为每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；年初至今线以每个自然年首个交易日收盘为 0% 逐年重置；SMA125 为同一指数最近 125 个交易日收盘点位的等权算术平均，并与指数点位共用同一纵轴；市场情绪为 CNN Fear & Greed Index 官方 0–100 分。",
+      "历史点位来自 FRED；当日点位来自 Nasdaq 公开指数行情并每 10 分钟重新验证，当日未收盘时作为临时收盘输入。同比为每个点位 ÷ 一年前同日或此前最近交易日收盘点位 − 1；年初至今线以每个自然年首个交易日收盘为 0% 逐年重置；SMA50 与 SMA125 分别为同一指数最近 50、125 个交易日收盘点位的等权算术平均，并与指数点位共用同一纵轴；市场情绪为 CNN Fear & Greed Index 官方 0–100 分。",
     points,
     ytdPoints,
+    movingAverage50,
     movingAverage125,
     fearGreed,
     stats: {

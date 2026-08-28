@@ -97,6 +97,7 @@ export function NasdaqDashboard() {
   const [showYoY, setShowYoY] = useState(true);
   const [showYtd, setShowYtd] = useState(false);
   const [showIndex, setShowIndex] = useState(false);
+  const [showMovingAverage50, setShowMovingAverage50] = useState(false);
   const [showMovingAverage, setShowMovingAverage] = useState(false);
   const [showFearGreed, setShowFearGreed] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
@@ -143,11 +144,21 @@ export function NasdaqDashboard() {
         )
       : [];
   }, [data?.movingAverage125, visiblePoints]);
+  const visibleMovingAverage50Points = useMemo(() => {
+    const visibleStart = visiblePoints[0]?.date;
+    const visibleEnd = visiblePoints.at(-1)?.date;
+    return visibleStart && visibleEnd
+      ? (data?.movingAverage50 ?? []).filter(
+          (point) => point.date >= visibleStart && point.date <= visibleEnd,
+        )
+      : [];
+  }, [data?.movingAverage50, visiblePoints]);
   const fearGreedDistribution = useMemo(
     () => summarizeFearGreedDistribution(visibleFearGreedPoints),
     [visibleFearGreedPoints],
   );
   const latestYtdPct = visibleYtdPoints.at(-1)?.ytdPct ?? null;
+  const latestMovingAverage50 = visibleMovingAverage50Points.at(-1)?.value ?? null;
   const latestMovingAverage = visibleMovingAveragePoints.at(-1)?.value ?? null;
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
@@ -259,6 +270,9 @@ export function NasdaqDashboard() {
                 {showIndex ? (
                   <span role="listitem"><i className="legend-swatch index-bg" />指数点位</span>
                 ) : null}
+                {showMovingAverage50 ? (
+                  <span role="listitem"><i className="legend-swatch moving-average-50-bg" />50日均线</span>
+                ) : null}
                 {showMovingAverage ? (
                   <span role="listitem"><i className="legend-swatch moving-average-bg" />125日均线</span>
                 ) : null}
@@ -299,6 +313,19 @@ export function NasdaqDashboard() {
                   <span className="toggle-indicator" aria-hidden="true"><i /></span>
                   <span>显示指数点数</span>
                   <strong>{compactPointFormatter.format(data.stats.latestClose)}</strong>
+                </button>
+                <button
+                  type="button"
+                  className={`compare-toggle moving-average-50-toggle${showMovingAverage50 ? " is-active" : ""}`}
+                  aria-pressed={showMovingAverage50}
+                  onClick={() => setShowMovingAverage50((current) => !current)}
+                  disabled={latestMovingAverage50 === null}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>50日均线</span>
+                  {latestMovingAverage50 === null ? null : (
+                    <strong>{numberFormatter.format(latestMovingAverage50)}</strong>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -372,11 +399,13 @@ export function NasdaqDashboard() {
             key={customYear === null ? timeRange : `year-${customYear}`}
             points={visiblePoints}
             ytdPoints={visibleYtdPoints}
+            movingAverage50Points={visibleMovingAverage50Points}
             movingAveragePoints={visibleMovingAveragePoints}
             fearGreedPoints={visibleFearGreedPoints}
             showYoY={showYoY}
             showYtd={showYtd}
             showIndex={showIndex}
+            showMovingAverage50={showMovingAverage50}
             showMovingAverage={showMovingAverage}
             showFearGreed={showFearGreed}
           />
@@ -460,7 +489,7 @@ export function NasdaqDashboard() {
         <footer className="data-footer">
           <div>
             <p><strong>计算口径</strong> {data.methodology}</p>
-            <p>数据截至 {formatDate(data.asOf)}。历史区间使用日收盘；当日未收盘时，SMA125 含最新公开点位并属于盘中估算。内容不构成投资建议。</p>
+            <p>数据截至 {formatDate(data.asOf)}。历史区间使用日收盘；当日未收盘时，SMA50 与 SMA125 均含最新公开点位并属于盘中估算。内容不构成投资建议。</p>
             {data.intraday.active && data.intraday.updatedAt ? (
               <p className="intraday-notice">
                 当日点位每 10 分钟刷新；最近行情时间（美东）{intradayTimeFormatter.format(new Date(data.intraday.updatedAt))}。Nasdaq 公开展示数据至少延迟 1 分钟。

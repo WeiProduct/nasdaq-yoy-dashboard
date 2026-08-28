@@ -47,6 +47,28 @@ describe("computeSimpleMovingAverage", () => {
     ]);
   });
 
+  it("computes SMA50 from exactly 50 trading observations", () => {
+    const observations = Array.from({ length: 51 }, (_, index) => ({
+      date: new Date(Date.UTC(2026, 0, index + 1)).toISOString().slice(0, 10),
+      close: index + 1,
+    }));
+    const result = computeSimpleMovingAverage(observations, 50);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      value: 25.5,
+      period: 50,
+      windowStartDate: "2026-01-01",
+      windowEndDate: "2026-02-19",
+    });
+    expect(result[1]).toMatchObject({
+      value: 26.5,
+      period: 50,
+      windowStartDate: "2026-01-02",
+      windowEndDate: "2026-02-20",
+    });
+  });
+
   it("rejects incomplete or invalid windows", () => {
     expect(computeSimpleMovingAverage([{ date: "2026-01-01", close: 10 }], 3)).toEqual([]);
     expect(computeSimpleMovingAverage([], 0)).toEqual([]);

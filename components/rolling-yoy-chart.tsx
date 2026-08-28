@@ -57,7 +57,13 @@ type MovingAverageChartPoint = NasdaqMovingAveragePoint & {
   dateValue: Date;
 };
 
-type HoverSeriesKey = "yoy" | "ytd" | "index" | "moving-average" | "fear-greed";
+type HoverSeriesKey =
+  | "yoy"
+  | "ytd"
+  | "index"
+  | "moving-average-50"
+  | "moving-average"
+  | "fear-greed";
 
 type HoverSeries = {
   key: HoverSeriesKey;
@@ -142,11 +148,13 @@ function useContainerWidth() {
 type RollingYoYChartProps = {
   points: NasdaqYoYPoint[];
   ytdPoints: YtdPoint[];
+  movingAverage50Points: NasdaqMovingAveragePoint[];
   movingAveragePoints: NasdaqMovingAveragePoint[];
   fearGreedPoints: FearGreedPoint[];
   showYoY: boolean;
   showYtd: boolean;
   showIndex: boolean;
+  showMovingAverage50: boolean;
   showMovingAverage: boolean;
   showFearGreed: boolean;
 };
@@ -154,11 +162,13 @@ type RollingYoYChartProps = {
 export function RollingYoYChart({
   points: rawPoints,
   ytdPoints: rawYtdPoints,
+  movingAverage50Points: rawMovingAverage50Points,
   movingAveragePoints: rawMovingAveragePoints,
   fearGreedPoints: rawFearGreedPoints,
   showYoY,
   showYtd,
   showIndex,
+  showMovingAverage50,
   showMovingAverage,
   showFearGreed,
 }: RollingYoYChartProps) {
@@ -199,6 +209,14 @@ export function RollingYoYChart({
       }),
     [rawMovingAveragePoints],
   );
+  const movingAverage50Points = useMemo<MovingAverageChartPoint[]>(
+    () =>
+      rawMovingAverage50Points.map((point) => {
+        const dateValue = new Date(`${point.date}T00:00:00.000Z`);
+        return { ...point, dateValue, timestamp: dateValue.getTime() };
+      }),
+    [rawMovingAverage50Points],
+  );
   const ytdByDate = useMemo(
     () => new Map(ytdPoints.map((point) => [point.date, point])),
     [ytdPoints],
@@ -206,6 +224,10 @@ export function RollingYoYChart({
   const movingAverageByDate = useMemo(
     () => new Map(movingAveragePoints.map((point) => [point.date, point])),
     [movingAveragePoints],
+  );
+  const movingAverage50ByDate = useMemo(
+    () => new Map(movingAverage50Points.map((point) => [point.date, point])),
+    [movingAverage50Points],
   );
   const ytdSeries = useMemo(() => {
     const seriesByYear = new Map<string, YtdChartPoint[]>();
@@ -224,7 +246,7 @@ export function RollingYoYChart({
 
   const isCompact = width < 620;
   const height = width > 0 && isCompact ? 350 : 430;
-  const showPointAxis = showIndex || showMovingAverage;
+  const showPointAxis = showIndex || showMovingAverage50 || showMovingAverage;
   const leftMargin = isCompact
     ? showPointAxis && showFearGreed
       ? 86
@@ -244,6 +266,11 @@ export function RollingYoYChart({
     ? { top: 18, right: 48, bottom: 42, left: leftMargin }
     : { top: 24, right: 64, bottom: 46, left: leftMargin };
   const showPercentAxis = showYoY || showYtd;
+  const pointAxisClass = showIndex
+    ? "index"
+    : showMovingAverage
+      ? "moving-average"
+      : "moving-average-50";
 
   const chart = useMemo(() => {
     if (width <= 0 || points.length === 0) return null;
@@ -251,7 +278,10 @@ export function RollingYoYChart({
     const [dateMin, dateMax] = extent(points, (point) => point.dateValue);
     const pointAxisValues = pointAxisDomainValues(
       points.map((point) => point.close),
-      showMovingAverage ? movingAveragePoints.map((point) => point.value) : [],
+      [
+        ...(showMovingAverage50 ? movingAverage50Points.map((point) => point.value) : []),
+        ...(showMovingAverage ? movingAveragePoints.map((point) => point.value) : []),
+      ],
     );
     const [closeMin = 0, closeMax = 0] = extent(pointAxisValues);
     const visibleValues = showYoY ? points.map((point) => point.yoyPct) : [];
@@ -320,6 +350,12 @@ export function RollingYoYChart({
           .y((point) => indexYScale(point.value))
           .curve(curveLinear)(movingAveragePoints)
       : null;
+    const movingAverage50LinePath = showMovingAverage50 && movingAverage50Points.length > 0
+      ? line<MovingAverageChartPoint>()
+          .x((point) => xScale(point.dateValue))
+          .y((point) => indexYScale(point.value))
+          .curve(curveLinear)(movingAverage50Points)
+      : null;
     const fearGreedYScale = scaleLinear()
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
@@ -344,6 +380,7 @@ export function RollingYoYChart({
       areaPath,
       ytdLinePaths,
       indexLinePath,
+      movingAverage50LinePath,
       movingAverageLinePath,
       indexYScale,
       fearGreedLinePath,
@@ -355,7 +392,7 @@ export function RollingYoYChart({
       fearGreedTicks: [0, 25, 50, 75, 100],
       spanDays,
     };
-  }, [fearGreedPoints, height, margin.bottom, margin.left, margin.right, margin.top, movingAveragePoints, points, showFearGreed, showIndex, showMovingAverage, showYoY, showYtd, width, ytdPoints, ytdSeries]);
+  }, [fearGreedPoints, height, margin.bottom, margin.left, margin.right, margin.top, movingAverage50Points, movingAveragePoints, points, showFearGreed, showIndex, showMovingAverage, showMovingAverage50, showYoY, showYtd, width, ytdPoints, ytdSeries]);
 
   const nearestIndex = useMemo(
     () => bisector<ChartPoint, number>((point) => point.timestamp).center,
@@ -416,6 +453,9 @@ export function RollingYoYChart({
 
   const hovered = hoveredIndex === null ? null : points[hoveredIndex];
   const hoveredYtd = hovered && showYtd ? ytdByDate.get(hovered.date) : undefined;
+  const hoveredMovingAverage50 = hovered && showMovingAverage50
+    ? movingAverage50ByDate.get(hovered.date)
+    : undefined;
   const hoveredMovingAverage = hovered && showMovingAverage
     ? movingAverageByDate.get(hovered.date)
     : undefined;
@@ -426,6 +466,9 @@ export function RollingYoYChart({
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
   const hoveredYtdY = hoveredYtd && chart ? chart.yScale(hoveredYtd.ytdPct) : 0;
   const hoveredIndexY = hovered && chart ? chart.indexYScale(hovered.close) : 0;
+  const hoveredMovingAverage50Y = hoveredMovingAverage50 && chart
+    ? chart.indexYScale(hoveredMovingAverage50.value)
+    : 0;
   const hoveredMovingAverageY = hoveredMovingAverage && chart
     ? chart.indexYScale(hoveredMovingAverage.value)
     : 0;
@@ -479,6 +522,18 @@ export function RollingYoYChart({
       ariaText: `125 日均线 ${numberFormatter.format(hoveredMovingAverage.value)}`,
       textClassName: "tooltip-value moving-average-fill",
       dotClassName: "moving-average-hover-dot",
+    });
+  }
+  if (hoveredMovingAverage50) {
+    hoverSeriesCandidates.push({
+      key: "moving-average-50",
+      x: hoveredX,
+      y: hoveredMovingAverage50Y,
+      valueText: `SMA50 ${numberFormatter.format(hoveredMovingAverage50.value)}`,
+      detailText: `${hoveredMovingAverage50.period}个交易日 · ${formatShortDate(hoveredMovingAverage50.windowStartDate)}–${formatShortDate(hoveredMovingAverage50.windowEndDate)}`,
+      ariaText: `50 日均线 ${numberFormatter.format(hoveredMovingAverage50.value)}`,
+      textClassName: "tooltip-value moving-average-50-fill",
+      dotClassName: "moving-average-50-hover-dot",
     });
   }
   if (hoveredFearGreed) {
@@ -591,6 +646,9 @@ export function RollingYoYChart({
   const tooltipY = margin.top + 8;
   const activePoint = hovered ?? points.at(-1)!;
   const activeYtd = showYtd ? ytdByDate.get(activePoint.date) : undefined;
+  const activeMovingAverage50 = showMovingAverage50
+    ? movingAverage50ByDate.get(activePoint.date)
+    : undefined;
   const activeMovingAverage = showMovingAverage
     ? movingAverageByDate.get(activePoint.date)
     : undefined;
@@ -603,6 +661,9 @@ export function RollingYoYChart({
       ? `年初至今 ${percent(activeYtd.ytdPct)}，年初点位 ${numberFormatter.format(activeYtd.yearStartClose)}，当时点位 ${numberFormatter.format(activeYtd.close)}`
       : null,
     showIndex ? `指数收盘 ${numberFormatter.format(activePoint.close)}` : null,
+    activeMovingAverage50
+      ? `50 日均线 ${numberFormatter.format(activeMovingAverage50.value)}`
+      : null,
     activeMovingAverage
       ? `125 日均线 ${numberFormatter.format(activeMovingAverage.value)}`
       : null,
@@ -735,7 +796,7 @@ export function RollingYoYChart({
             {showPointAxis ? (
               <>
                 <text
-                  className={`axis-unit ${showIndex ? "index-axis-unit" : "moving-average-axis-unit"}`}
+                  className={`axis-unit ${pointAxisClass}-axis-unit`}
                   x={margin.left - (showFearGreed ? (isCompact ? 38 : 48) : 8)}
                   y={margin.top - 7}
                   textAnchor="end"
@@ -745,14 +806,14 @@ export function RollingYoYChart({
                 {chart.indexTicks.map((tick) => (
                   <g key={`index-${tick}`}>
                     <line
-                      className={showIndex ? "index-axis-tick" : "moving-average-axis-tick"}
+                      className={`${pointAxisClass}-axis-tick`}
                       x1={margin.left - (showFearGreed ? (isCompact ? 43 : 53) : 5)}
                       x2={margin.left - (showFearGreed ? (isCompact ? 38 : 48) : 0)}
                       y1={chart.indexYScale(tick)}
                       y2={chart.indexYScale(tick)}
                     />
                     <text
-                      className={`axis-label ${showIndex ? "index-axis-label" : "moving-average-axis-label"}`}
+                      className={`axis-label ${pointAxisClass}-axis-label`}
                       x={margin.left - (showFearGreed ? (isCompact ? 46 : 56) : 8)}
                       y={chart.indexYScale(tick)}
                       dominantBaseline="middle"
@@ -867,6 +928,9 @@ export function RollingYoYChart({
             ) : null)}
             {chart.indexLinePath ? (
               <path className="index-line-path" d={chart.indexLinePath} />
+            ) : null}
+            {chart.movingAverage50LinePath ? (
+              <path className="moving-average-50-line-path" d={chart.movingAverage50LinePath} />
             ) : null}
             {chart.movingAverageLinePath ? (
               <path className="moving-average-line-path" d={chart.movingAverageLinePath} />

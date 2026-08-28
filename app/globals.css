@@ -16,6 +16,8 @@
   --index-soft: #f8eee4;
   --moving-average: #087f8f;
   --moving-average-soft: #e4f3f5;
+  --moving-average-50: #d97706;
+  --moving-average-50-soft: #fff2dc;
   --fear-greed: #7c3aed;
   --fear-greed-soft: #f1eafe;
   --extreme-fear: #9f1239;
@@ -400,6 +402,10 @@ h1 {
   background: var(--moving-average);
 }
 
+.moving-average-50-bg {
+  background: var(--moving-average-50);
+}
+
 .fear-greed-bg {
   background: var(--fear-greed);
 }
@@ -496,6 +502,20 @@ h1 {
 
 .moving-average-toggle.is-active .toggle-indicator {
   background: var(--moving-average);
+}
+
+.moving-average-50-toggle.is-active {
+  border-color: color-mix(in srgb, var(--moving-average-50) 46%, white);
+  color: #925005;
+  background: var(--moving-average-50-soft);
+}
+
+.moving-average-50-toggle strong {
+  color: var(--moving-average-50);
+}
+
+.moving-average-50-toggle.is-active .toggle-indicator {
+  background: var(--moving-average-50);
 }
 
 .yoy-toggle.is-active {
@@ -600,6 +620,17 @@ h1 {
   animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
+.moving-average-50-line-path {
+  fill: none;
+  stroke: var(--moving-average-50);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 6 3;
+  vector-effect: non-scaling-stroke;
+  animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
 .fear-greed-line-path {
   fill: none;
   stroke: var(--fear-greed);
@@ -662,6 +693,15 @@ h1 {
 .moving-average-axis-label,
 .moving-average-axis-unit {
   fill: var(--moving-average);
+}
+
+.moving-average-50-axis-tick {
+  stroke: color-mix(in srgb, var(--moving-average-50) 48%, white);
+}
+
+.moving-average-50-axis-label,
+.moving-average-50-axis-unit {
+  fill: var(--moving-average-50);
 }
 
 .fear-greed-axis-tick {
@@ -731,6 +771,10 @@ h1 {
   fill: var(--moving-average);
 }
 
+.moving-average-50-hover-dot {
+  fill: var(--moving-average-50);
+}
+
 .fear-greed-hover-dot {
   fill: var(--fear-greed);
 }
@@ -792,6 +836,10 @@ h1 {
 
 .moving-average-fill {
   fill: var(--moving-average);
+}
+
+.moving-average-50-fill {
+  fill: var(--moving-average-50);
 }
 
 .fear-greed-fill {
