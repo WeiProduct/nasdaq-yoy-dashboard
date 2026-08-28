@@ -11,6 +11,12 @@ export type NasdaqYtdPoint = {
   ytdPct: number;
 };
 
+export type NasdaqMovingAveragePoint = {
+  date: string;
+  value: number;
+  period: number;
+};
+
 export type NasdaqYoYPoint = {
   date: string;
   close: number;
@@ -64,6 +70,7 @@ export type NasdaqYoYResponse = {
   methodology: string;
   points: NasdaqYoYPoint[];
   ytdPoints: NasdaqYtdPoint[];
+  movingAverage125: NasdaqMovingAveragePoint[];
   fearGreed: FearGreedSeries;
   stats: {
     latestClose: number;

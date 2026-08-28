@@ -14,6 +14,8 @@
   --ytd-soft: #e9eefc;
   --index: #984f12;
   --index-soft: #f8eee4;
+  --moving-average: #087f8f;
+  --moving-average-soft: #e4f3f5;
   --fear-greed: #7c3aed;
   --fear-greed-soft: #f1eafe;
   --focus: #1967d2;
@@ -346,6 +348,10 @@ h1 {
   background: var(--index);
 }
 
+.moving-average-bg {
+  background: var(--moving-average);
+}
+
 .fear-greed-bg {
   background: var(--fear-greed);
 }
@@ -428,6 +434,20 @@ h1 {
 
 .index-toggle.is-active .toggle-indicator {
   background: var(--index);
+}
+
+.moving-average-toggle.is-active {
+  border-color: color-mix(in srgb, var(--moving-average) 46%, white);
+  color: #07606c;
+  background: var(--moving-average-soft);
+}
+
+.moving-average-toggle strong {
+  color: var(--moving-average);
+}
+
+.moving-average-toggle.is-active .toggle-indicator {
+  background: var(--moving-average);
 }
 
 .yoy-toggle.is-active {
@@ -522,6 +542,16 @@ h1 {
   animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
+.moving-average-line-path {
+  fill: none;
+  stroke: var(--moving-average);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  animation: chart-appear 450ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
 .fear-greed-line-path {
   fill: none;
   stroke: var(--fear-greed);
@@ -539,6 +569,15 @@ h1 {
 .index-axis-label,
 .index-axis-unit {
   fill: var(--index);
+}
+
+.moving-average-axis-tick {
+  stroke: color-mix(in srgb, var(--moving-average) 48%, white);
+}
+
+.moving-average-axis-label,
+.moving-average-axis-unit {
+  fill: var(--moving-average);
 }
 
 .fear-greed-axis-tick {
@@ -604,6 +643,10 @@ h1 {
   fill: var(--index);
 }
 
+.moving-average-hover-dot {
+  fill: var(--moving-average);
+}
+
 .fear-greed-hover-dot {
   fill: var(--fear-greed);
 }
@@ -635,6 +678,13 @@ h1 {
 
 .tooltip-fear-greed-value {
   fill: var(--fear-greed);
+  font-size: 11px;
+  font-weight: 740;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-moving-average-value {
+  fill: var(--moving-average);
   font-size: 11px;
   font-weight: 740;
   font-variant-numeric: tabular-nums;

@@ -94,10 +94,12 @@ export function NasdaqDashboard() {
   const [showYoY, setShowYoY] = useState(true);
   const [showYtd, setShowYtd] = useState(false);
   const [showIndex, setShowIndex] = useState(false);
+  const [showMovingAverage, setShowMovingAverage] = useState(false);
   const [showFearGreed, setShowFearGreed] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 
   const latestYtdPct = data?.ytdPoints.at(-1)?.ytdPct ?? null;
+  const latestMovingAverage = data?.movingAverage125?.at(-1)?.value ?? null;
   const visiblePoints = useMemo(
     () => filterPointsByRange(data?.points ?? [], timeRange),
     [data, timeRange],
@@ -117,6 +119,15 @@ export function NasdaqDashboard() {
         )
       : [];
   }, [data?.fearGreed?.points, visiblePoints]);
+  const visibleMovingAveragePoints = useMemo(() => {
+    const visibleStart = visiblePoints[0]?.date;
+    const visibleEnd = visiblePoints.at(-1)?.date;
+    return visibleStart && visibleEnd
+      ? (data?.movingAverage125 ?? []).filter(
+          (point) => point.date >= visibleStart && point.date <= visibleEnd,
+        )
+      : [];
+  }, [data?.movingAverage125, visiblePoints]);
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
 
@@ -226,6 +237,9 @@ export function NasdaqDashboard() {
                 {showIndex ? (
                   <span role="listitem"><i className="legend-swatch index-bg" />指数点位</span>
                 ) : null}
+                {showMovingAverage ? (
+                  <span role="listitem"><i className="legend-swatch moving-average-bg" />125日均线</span>
+                ) : null}
                 {showFearGreed ? (
                   <span role="listitem"><i className="legend-swatch fear-greed-bg" />CNN 恐惧与贪婪</span>
                 ) : null}
@@ -266,6 +280,19 @@ export function NasdaqDashboard() {
                 </button>
                 <button
                   type="button"
+                  className={`compare-toggle moving-average-toggle${showMovingAverage ? " is-active" : ""}`}
+                  aria-pressed={showMovingAverage}
+                  onClick={() => setShowMovingAverage((current) => !current)}
+                  disabled={latestMovingAverage === null}
+                >
+                  <span className="toggle-indicator" aria-hidden="true"><i /></span>
+                  <span>125日均线</span>
+                  {latestMovingAverage === null ? null : (
+                    <strong>{compactPointFormatter.format(latestMovingAverage)}</strong>
+                  )}
+                </button>
+                <button
+                  type="button"
                   className={`compare-toggle fear-greed-toggle${showFearGreed ? " is-active" : ""}`}
                   aria-pressed={showFearGreed}
                   onClick={() => setShowFearGreed((current) => !current)}
@@ -300,10 +327,12 @@ export function NasdaqDashboard() {
             key={timeRange}
             points={visiblePoints}
             ytdPoints={visibleYtdPoints}
+            movingAveragePoints={visibleMovingAveragePoints}
             fearGreedPoints={visibleFearGreedPoints}
             showYoY={showYoY}
             showYtd={showYtd}
             showIndex={showIndex}
+            showMovingAverage={showMovingAverage}
             showFearGreed={showFearGreed}
           />
         </section>

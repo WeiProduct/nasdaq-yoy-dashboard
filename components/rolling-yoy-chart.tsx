@@ -18,7 +18,11 @@ import {
   scaleLinear,
   scaleUtc,
 } from "d3";
-import type { FearGreedPoint, NasdaqYoYPoint } from "@/lib/types";
+import type {
+  FearGreedPoint,
+  NasdaqMovingAveragePoint,
+  NasdaqYoYPoint,
+} from "@/lib/types";
 import { mapClientXToRange } from "@/lib/chart-coordinates";
 import type { YtdPoint } from "@/lib/ytd";
 import { fearGreedRatingLabel } from "@/lib/fear-greed-rating";
@@ -34,6 +38,11 @@ type YtdChartPoint = YtdPoint & {
 };
 
 type FearGreedChartPoint = FearGreedPoint & {
+  timestamp: number;
+  dateValue: Date;
+};
+
+type MovingAverageChartPoint = NasdaqMovingAveragePoint & {
   timestamp: number;
   dateValue: Date;
 };
@@ -105,20 +114,24 @@ function useContainerWidth() {
 type RollingYoYChartProps = {
   points: NasdaqYoYPoint[];
   ytdPoints: YtdPoint[];
+  movingAveragePoints: NasdaqMovingAveragePoint[];
   fearGreedPoints: FearGreedPoint[];
   showYoY: boolean;
   showYtd: boolean;
   showIndex: boolean;
+  showMovingAverage: boolean;
   showFearGreed: boolean;
 };
 
 export function RollingYoYChart({
   points: rawPoints,
   ytdPoints: rawYtdPoints,
+  movingAveragePoints: rawMovingAveragePoints,
   fearGreedPoints: rawFearGreedPoints,
   showYoY,
   showYtd,
   showIndex,
+  showMovingAverage,
   showFearGreed,
 }: RollingYoYChartProps) {
   const { ref: containerRef, width } = useContainerWidth();
@@ -149,9 +162,21 @@ export function RollingYoYChart({
       }),
     [rawFearGreedPoints],
   );
+  const movingAveragePoints = useMemo<MovingAverageChartPoint[]>(
+    () =>
+      rawMovingAveragePoints.map((point) => {
+        const dateValue = new Date(`${point.date}T00:00:00.000Z`);
+        return { ...point, dateValue, timestamp: dateValue.getTime() };
+      }),
+    [rawMovingAveragePoints],
+  );
   const ytdByDate = useMemo(
     () => new Map(ytdPoints.map((point) => [point.date, point])),
     [ytdPoints],
+  );
+  const movingAverageByDate = useMemo(
+    () => new Map(movingAveragePoints.map((point) => [point.date, point])),
+    [movingAveragePoints],
   );
   const ytdSeries = useMemo(() => {
     const seriesByYear = new Map<string, YtdChartPoint[]>();
@@ -170,17 +195,18 @@ export function RollingYoYChart({
 
   const isCompact = width < 620;
   const height = width > 0 && isCompact ? 350 : 430;
+  const showPointAxis = showIndex || showMovingAverage;
   const leftMargin = isCompact
-    ? showIndex && showFearGreed
+    ? showPointAxis && showFearGreed
       ? 86
-      : showIndex
+      : showPointAxis
         ? 48
         : showFearGreed
           ? 42
           : 10
-    : showIndex && showFearGreed
+    : showPointAxis && showFearGreed
       ? 104
-      : showIndex
+      : showPointAxis
         ? 64
         : showFearGreed
           ? 52
@@ -194,7 +220,12 @@ export function RollingYoYChart({
     if (width <= 0 || points.length === 0) return null;
 
     const [dateMin, dateMax] = extent(points, (point) => point.dateValue);
-    const [closeMin = 0, closeMax = 0] = extent(points, (point) => point.close);
+    const pointAxisValues = [
+      ...(showIndex ? points.map((point) => point.close) : []),
+      ...(showMovingAverage ? movingAveragePoints.map((point) => point.value) : []),
+    ];
+    if (pointAxisValues.length === 0) pointAxisValues.push(...points.map((point) => point.close));
+    const [closeMin = 0, closeMax = 0] = extent(pointAxisValues);
     const visibleValues = showYoY ? points.map((point) => point.yoyPct) : [];
     if (showYtd) visibleValues.push(...ytdPoints.map((point) => point.ytdPct));
     if (visibleValues.length === 0) visibleValues.push(...points.map((point) => point.yoyPct));
@@ -255,6 +286,12 @@ export function RollingYoYChart({
           .y((point) => indexYScale(point.close))
           .curve(curveLinear)(points)
       : null;
+    const movingAverageLinePath = showMovingAverage && movingAveragePoints.length > 0
+      ? line<MovingAverageChartPoint>()
+          .x((point) => xScale(point.dateValue))
+          .y((point) => indexYScale(point.value))
+          .curve(curveLinear)(movingAveragePoints)
+      : null;
     const fearGreedYScale = scaleLinear()
       .domain([0, 100])
       .range([height - margin.bottom, margin.top]);
@@ -279,6 +316,7 @@ export function RollingYoYChart({
       areaPath,
       ytdLinePaths,
       indexLinePath,
+      movingAverageLinePath,
       indexYScale,
       fearGreedLinePath,
       fearGreedYScale,
@@ -289,7 +327,7 @@ export function RollingYoYChart({
       fearGreedTicks: [0, 25, 50, 75, 100],
       spanDays,
     };
-  }, [fearGreedPoints, height, margin.bottom, margin.left, margin.right, margin.top, points, showFearGreed, showIndex, showYoY, showYtd, width, ytdPoints, ytdSeries]);
+  }, [fearGreedPoints, height, margin.bottom, margin.left, margin.right, margin.top, movingAveragePoints, points, showFearGreed, showIndex, showMovingAverage, showYoY, showYtd, width, ytdPoints, ytdSeries]);
 
   const nearestIndex = useMemo(
     () => bisector<ChartPoint, number>((point) => point.timestamp).center,
@@ -340,6 +378,9 @@ export function RollingYoYChart({
 
   const hovered = hoveredIndex === null ? null : points[hoveredIndex];
   const hoveredYtd = hovered && showYtd ? ytdByDate.get(hovered.date) : undefined;
+  const hoveredMovingAverage = hovered && showMovingAverage
+    ? movingAverageByDate.get(hovered.date)
+    : undefined;
   const hoveredFearGreed = hovered && showFearGreed && fearGreedPoints.length > 0
     ? fearGreedPoints[nearestFearGreedIndex(fearGreedPoints, hovered.timestamp)]
     : undefined;
@@ -347,20 +388,28 @@ export function RollingYoYChart({
   const hoveredY = hovered && chart ? chart.yScale(hovered.yoyPct) : 0;
   const hoveredYtdY = hoveredYtd && chart ? chart.yScale(hoveredYtd.ytdPct) : 0;
   const hoveredIndexY = hovered && chart ? chart.indexYScale(hovered.close) : 0;
+  const hoveredMovingAverageY = hoveredMovingAverage && chart
+    ? chart.indexYScale(hoveredMovingAverage.value)
+    : 0;
   const hoveredFearGreedX = hoveredFearGreed && chart ? chart.xScale(hoveredFearGreed.dateValue) : 0;
   const hoveredFearGreedY = hoveredFearGreed && chart ? chart.fearGreedYScale(hoveredFearGreed.score) : 0;
   const hasPercentValue = showYoY || Boolean(hoveredYtd);
   const hasPriceValue = showYoY || showIndex;
-  const fearGreedTooltipY = hasPercentValue ? (hasPriceValue ? 82 : 62) : 43;
-  const priceTooltipY = hasPercentValue ? 62 : hoveredFearGreed ? 63 : 43;
+  let nextTooltipRowY = hasPercentValue ? 62 : 43;
+  const priceTooltipY = hasPriceValue ? nextTooltipRowY : null;
+  if (hasPriceValue) nextTooltipRowY += 20;
+  const movingAverageTooltipY = hoveredMovingAverage ? nextTooltipRowY : null;
+  if (hoveredMovingAverage) nextTooltipRowY += 20;
+  const fearGreedTooltipY = hoveredFearGreed ? nextTooltipRowY : null;
+  if (hoveredFearGreed) nextTooltipRowY += 20;
   const tooltipWidth = width < 620 ? 238 : 270;
-  const tooltipHeight = hoveredFearGreed
-    ? fearGreedTooltipY + 12
-    : hasPriceValue
-      ? priceTooltipY + 11
-      : hasPercentValue
-        ? 55
-        : 36;
+  const tooltipHeight = Math.max(
+    36,
+    hasPercentValue ? 55 : 0,
+    priceTooltipY ? priceTooltipY + 11 : 0,
+    movingAverageTooltipY ? movingAverageTooltipY + 11 : 0,
+    fearGreedTooltipY ? fearGreedTooltipY + 11 : 0,
+  );
   const tooltipX = Math.max(
     4,
     Math.min(
@@ -371,6 +420,9 @@ export function RollingYoYChart({
   const tooltipY = margin.top + 8;
   const activePoint = hovered ?? points.at(-1)!;
   const activeYtd = showYtd ? ytdByDate.get(activePoint.date) : undefined;
+  const activeMovingAverage = showMovingAverage
+    ? movingAverageByDate.get(activePoint.date)
+    : undefined;
   const activeFearGreed = showFearGreed && fearGreedPoints.length > 0
     ? fearGreedPoints[nearestFearGreedIndex(fearGreedPoints, activePoint.timestamp)]
     : undefined;
@@ -378,6 +430,9 @@ export function RollingYoYChart({
     showYoY ? `同比 ${percent(activePoint.yoyPct)}` : null,
     activeYtd ? `年初至今 ${percent(activeYtd.ytdPct)}` : null,
     showIndex ? `指数收盘 ${numberFormatter.format(activePoint.close)}` : null,
+    activeMovingAverage
+      ? `125 日均线 ${numberFormatter.format(activeMovingAverage.value)}`
+      : null,
     activeFearGreed
       ? `CNN 恐惧与贪婪指数 ${activeFearGreed.score.toFixed(0)}，${fearGreedRatingLabel(activeFearGreed.rating)}`
       : null,
@@ -500,10 +555,10 @@ export function RollingYoYChart({
                 ))}
               </>
             ) : null}
-            {showIndex ? (
+            {showPointAxis ? (
               <>
                 <text
-                  className="axis-unit index-axis-unit"
+                  className={`axis-unit ${showIndex ? "index-axis-unit" : "moving-average-axis-unit"}`}
                   x={margin.left - (showFearGreed ? (isCompact ? 38 : 48) : 8)}
                   y={margin.top - 7}
                   textAnchor="end"
@@ -513,14 +568,14 @@ export function RollingYoYChart({
                 {chart.indexTicks.map((tick) => (
                   <g key={`index-${tick}`}>
                     <line
-                      className="index-axis-tick"
+                      className={showIndex ? "index-axis-tick" : "moving-average-axis-tick"}
                       x1={margin.left - (showFearGreed ? (isCompact ? 43 : 53) : 5)}
                       x2={margin.left - (showFearGreed ? (isCompact ? 38 : 48) : 0)}
                       y1={chart.indexYScale(tick)}
                       y2={chart.indexYScale(tick)}
                     />
                     <text
-                      className="axis-label index-axis-label"
+                      className={`axis-label ${showIndex ? "index-axis-label" : "moving-average-axis-label"}`}
                       x={margin.left - (showFearGreed ? (isCompact ? 46 : 56) : 8)}
                       y={chart.indexYScale(tick)}
                       dominantBaseline="middle"
@@ -571,6 +626,9 @@ export function RollingYoYChart({
             ) : null)}
             {chart.indexLinePath ? (
               <path className="index-line-path" d={chart.indexLinePath} />
+            ) : null}
+            {chart.movingAverageLinePath ? (
+              <path className="moving-average-line-path" d={chart.movingAverageLinePath} />
             ) : null}
             {chart.fearGreedLinePath ? (
               <path className="fear-greed-line-path" d={chart.fearGreedLinePath} />
@@ -634,6 +692,17 @@ export function RollingYoYChart({
                   <circle cx={hoveredX} cy={hoveredIndexY} r="3" fill="white" />
                 </>
               ) : null}
+              {hoveredMovingAverage ? (
+                <>
+                  <circle
+                    className="hover-dot-ring moving-average-hover-dot"
+                    cx={hoveredX}
+                    cy={hoveredMovingAverageY}
+                    r="7"
+                  />
+                  <circle cx={hoveredX} cy={hoveredMovingAverageY} r="3" fill="white" />
+                </>
+              ) : null}
               {hoveredFearGreed ? (
                 <>
                   <circle
@@ -673,18 +742,27 @@ export function RollingYoYChart({
                   <text
                     className="tooltip-detail"
                     x="14"
-                    y={priceTooltipY}
+                    y={priceTooltipY ?? undefined}
                   >
                     {showYoY
                       ? `今年 ${numberFormatter.format(hovered.close)} · 去年 ${numberFormatter.format(hovered.comparisonClose)}`
                       : `指数 ${numberFormatter.format(hovered.close)}`}
                   </text>
                 ) : null}
+                {hoveredMovingAverage ? (
+                  <text
+                    className="tooltip-moving-average-value"
+                    x="14"
+                    y={movingAverageTooltipY ?? undefined}
+                  >
+                    SMA125 {numberFormatter.format(hoveredMovingAverage.value)}
+                  </text>
+                ) : null}
                 {hoveredFearGreed ? (
                   <text
                     className="tooltip-fear-greed-value"
                     x="14"
-                    y={fearGreedTooltipY}
+                    y={fearGreedTooltipY ?? undefined}
                   >
                     CNN 情绪 {hoveredFearGreed.score.toFixed(0)} · {fearGreedRatingLabel(hoveredFearGreed.rating)}
                   </text>
