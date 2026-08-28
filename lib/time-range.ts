@@ -6,6 +6,7 @@ export const TIME_RANGE_OPTIONS = [
   { key: "1Y", label: "1年", months: 12 },
   { key: "3Y", label: "3年", months: 36 },
   { key: "5Y", label: "5年", months: 60 },
+  { key: "10Y", label: "10年", months: 120 },
 ] as const;
 
 export type TimeRange = (typeof TIME_RANGE_OPTIONS)[number]["key"];
@@ -44,6 +45,28 @@ export function filterPointsByRange(
   const startDate = shiftUtcMonthsBack(sorted.at(-1)!.date, months);
 
   return sorted.filter((point) => point.date >= startDate);
+}
+
+export function filterPointsByCalendarYear(
+  points: NasdaqYoYPoint[],
+  year: number,
+): NasdaqYoYPoint[] {
+  if (!Number.isInteger(year)) return [];
+  const prefix = `${year}-`;
+  return points
+    .filter((point) => point.date.startsWith(prefix))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function recentCalendarYears(
+  points: NasdaqYoYPoint[],
+  count = 10,
+): number[] {
+  if (points.length === 0 || count <= 0) return [];
+  const latestDate = [...points].sort((a, b) => a.date.localeCompare(b.date)).at(-1)!.date;
+  const latestYear = Number(latestDate.slice(0, 4));
+  if (!Number.isInteger(latestYear)) return [];
+  return Array.from({ length: count }, (_, index) => latestYear - index);
 }
 
 export function summarizeRange(points: NasdaqYoYPoint[]): RangeSummary | null {

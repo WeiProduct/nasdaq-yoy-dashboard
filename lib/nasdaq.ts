@@ -90,7 +90,7 @@ export function mergeLatestObservation(
 
 export function computeRollingYoY(
   observations: NasdaqObservation[],
-  visibleYears = 5,
+  visibleYears = 10,
 ): NasdaqYoYPoint[] {
   if (observations.length < 2) return [];
 
@@ -129,7 +129,7 @@ export function computeRollingYoY(
 
 function startDateForFredRequest(): string {
   const start = new Date();
-  start.setUTCFullYear(start.getUTCFullYear() - 6);
+  start.setUTCFullYear(start.getUTCFullYear() - 11);
   start.setUTCMonth(start.getUTCMonth() - 1);
   return formatUtcDate(start);
 }

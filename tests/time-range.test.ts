@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { NasdaqYoYPoint } from "@/lib/types";
 import {
+  filterPointsByCalendarYear,
   filterPointsByRange,
+  recentCalendarYears,
   shiftUtcMonthsBack,
   summarizeRange,
 } from "@/lib/time-range";
@@ -47,6 +49,30 @@ describe("filterPointsByRange", () => {
     expect(filterPointsByRange(points, "5Y").map((item) => item.date)).toEqual(
       points.slice(1).map((item) => item.date),
     );
+    expect(filterPointsByRange(points, "10Y")).toEqual(points);
+  });
+});
+
+describe("calendar year selection", () => {
+  const points = [
+    point("2024-12-31", 1),
+    point("2025-01-02", 2),
+    point("2025-12-31", 3),
+    point("2026-01-02", 4),
+  ];
+
+  it("returns only the requested natural year in date order", () => {
+    expect(filterPointsByCalendarYear(points, 2025).map((item) => item.date)).toEqual([
+      "2025-01-02",
+      "2025-12-31",
+    ]);
+    expect(filterPointsByCalendarYear(points, Number.NaN)).toEqual([]);
+  });
+
+  it("lists the latest ten natural years newest first", () => {
+    expect(recentCalendarYears(points)).toEqual([
+      2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017,
+    ]);
   });
 });
 

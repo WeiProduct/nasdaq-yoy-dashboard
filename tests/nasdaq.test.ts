@@ -88,7 +88,7 @@ describe("computeRollingYoY", () => {
     });
   });
 
-  it("uses five visible years by default", () => {
+  it("uses ten visible years by default", () => {
     const result = computeRollingYoY([
       { date: "2019-01-03", close: 50 },
       { date: "2020-01-03", close: 60 },
@@ -99,6 +99,7 @@ describe("computeRollingYoY", () => {
     ]);
 
     expect(result.map((point) => point.date)).toEqual([
+      "2020-01-03",
       "2021-01-03",
       "2025-01-03",
       "2026-01-03",
@@ -106,7 +107,7 @@ describe("computeRollingYoY", () => {
     expect(result.at(-1)?.yoyPct).toBe(25);
   });
 
-  it("keeps five years available in the bundled fallback snapshot", () => {
+  it("keeps the bundled fallback snapshot usable when the live ten-year request fails", () => {
     const result = computeRollingYoY(parseFredCsv(NASDAQ_SNAPSHOT_CSV));
 
     expect(result.length).toBeGreaterThan(1_200);

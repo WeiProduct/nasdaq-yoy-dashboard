@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RollingYoYChart } from "@/components/rolling-yoy-chart";
 import {
+  filterPointsByCalendarYear,
   filterPointsByRange,
+  recentCalendarYears,
   summarizeRange,
   TIME_RANGE_OPTIONS,
   type TimeRange,
@@ -98,17 +100,29 @@ export function NasdaqDashboard() {
   const [showMovingAverage, setShowMovingAverage] = useState(false);
   const [showFearGreed, setShowFearGreed] = useState(false);
   const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
+  const [customYear, setCustomYear] = useState<number | null>(null);
 
-  const latestYtdPct = data?.ytdPoints.at(-1)?.ytdPct ?? null;
-  const latestMovingAverage = data?.movingAverage125?.at(-1)?.value ?? null;
+  const availableYears = useMemo(
+    () => recentCalendarYears(data?.points ?? []),
+    [data?.points],
+  );
+  const yearsWithData = useMemo(
+    () => new Set((data?.points ?? []).map((point) => Number(point.date.slice(0, 4)))),
+    [data?.points],
+  );
   const visiblePoints = useMemo(
-    () => filterPointsByRange(data?.points ?? [], timeRange),
-    [data, timeRange],
+    () => customYear === null
+      ? filterPointsByRange(data?.points ?? [], timeRange)
+      : filterPointsByCalendarYear(data?.points ?? [], customYear),
+    [customYear, data?.points, timeRange],
   );
   const visibleYtdPoints = useMemo(() => {
     const visibleStart = visiblePoints[0]?.date;
-    return visibleStart
-      ? (data?.ytdPoints ?? []).filter((point) => point.date >= visibleStart)
+    const visibleEnd = visiblePoints.at(-1)?.date;
+    return visibleStart && visibleEnd
+      ? (data?.ytdPoints ?? []).filter(
+          (point) => point.date >= visibleStart && point.date <= visibleEnd,
+        )
       : [];
   }, [data?.ytdPoints, visiblePoints]);
   const visibleFearGreedPoints = useMemo(() => {
@@ -133,8 +147,11 @@ export function NasdaqDashboard() {
     () => summarizeFearGreedDistribution(visibleFearGreedPoints),
     [visibleFearGreedPoints],
   );
+  const latestYtdPct = visibleYtdPoints.at(-1)?.ytdPct ?? null;
+  const latestMovingAverage = visibleMovingAveragePoints.at(-1)?.value ?? null;
   const visibleStats = useMemo(() => summarizeRange(visiblePoints), [visiblePoints]);
   const selectedRange = TIME_RANGE_OPTIONS.find((option) => option.key === timeRange)!;
+  const selectedRangeLabel = customYear === null ? `过去${selectedRange.label}` : `${customYear}年`;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -225,7 +242,7 @@ export function NasdaqDashboard() {
         <section className="chart-panel" aria-labelledby="chart-title">
           <div className="chart-heading">
             <div>
-              <p className="eyebrow">过去{selectedRange.label}的每日同比变化</p>
+              <p className="eyebrow">{selectedRangeLabel}的每日同比变化</p>
               <h2 id="chart-title">滚动一年涨跌幅趋势</h2>
             </div>
             <div className="chart-controls">
@@ -315,21 +332,44 @@ export function NasdaqDashboard() {
               </div>
             </div>
           </div>
-          <div className="time-range-selector" role="group" aria-label="选择图表时间范围">
-            {TIME_RANGE_OPTIONS.map((option) => (
-              <button
-                key={option.key}
-                type="button"
-                className={timeRange === option.key ? "is-active" : ""}
-                aria-pressed={timeRange === option.key}
-                onClick={() => setTimeRange(option.key)}
+          <div className="time-range-controls">
+            <div className="time-range-selector" role="group" aria-label="选择图表时间范围">
+              {TIME_RANGE_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={customYear === null && timeRange === option.key ? "is-active" : ""}
+                  aria-pressed={customYear === null && timeRange === option.key}
+                  onClick={() => {
+                    setTimeRange(option.key);
+                    setCustomYear(null);
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <label className={`custom-year-picker${customYear === null ? "" : " is-active"}`}>
+              <span>自定义年份</span>
+              <select
+                aria-label="选择最近十年内的自然年份"
+                value={customYear ?? ""}
+                onChange={(event) => {
+                  const year = Number(event.target.value);
+                  setCustomYear(Number.isInteger(year) && year > 0 ? year : null);
+                }}
               >
-                {option.label}
-              </button>
-            ))}
+                <option value="">选择年份</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={year} disabled={!yearsWithData.has(year)}>
+                    {year}年{yearsWithData.has(year) ? "" : "（暂无数据）"}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <RollingYoYChart
-            key={timeRange}
+            key={customYear === null ? timeRange : `year-${customYear}`}
             points={visiblePoints}
             ytdPoints={visibleYtdPoints}
             movingAveragePoints={visibleMovingAveragePoints}
@@ -346,7 +386,7 @@ export function NasdaqDashboard() {
           <section className="fear-greed-distribution" aria-labelledby="fear-greed-distribution-title">
             <div className="fear-greed-distribution-heading">
               <div>
-                <p className="eyebrow">过去{selectedRange.label} · 有效情绪日期分布</p>
+                <p className="eyebrow">{selectedRangeLabel} · 有效情绪日期分布</p>
                 <h2 id="fear-greed-distribution-title">CNN 情绪区域占比</h2>
               </div>
               <strong>{fearGreedDistribution.total} 个日期</strong>
